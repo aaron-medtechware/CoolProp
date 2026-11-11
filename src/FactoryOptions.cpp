@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <string>
 
-#include "CoolProp/detail/filepaths.h"
+// #include "CoolProp/detail/filepaths.h"  // N2O-only: no filesystem
 #include "CoolProp/Exceptions.h"
 
 namespace CoolProp {
@@ -35,15 +35,14 @@ FactoryOptionsParseResult parse_factory_options(const std::string& factory_strin
     }
 
     if (tail.front() == '@') {
-        const std::string path = tail.substr(1);
-        if (path.empty()) {
-            throw ValueError("factory-string options: '@' indirection requires a non-empty path");
-        }
-        // get_file_contents() reads the file verbatim and throws on
-        // read failure.  The path may contain '?' / '&' / spaces /
-        // etc.  — no further parsing of the path string.
-        result.options_json = get_file_contents(path.c_str());
-        return result;
+        // N2O-only embedded build: no filesystem for @path options.
+        throw ValueError("factory-string options: '@' file indirection disabled in embedded build");
+        // const std::string path = tail.substr(1);
+        // if (path.empty()) {
+        //     throw ValueError("factory-string options: '@' indirection requires a non-empty path");
+        // }
+        // result.options_json = get_file_contents(path.c_str());
+        // return result;
     }
 
     result.options_json = std::move(tail);

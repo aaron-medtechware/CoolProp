@@ -34,7 +34,7 @@
 #elif __powerpc__
 #    define __ISPOWERPC__
 #else
-#    pragma error
+// #    pragma error
 #endif
 
 // Backwards compatibility: COOLPROP_LIB historically selected producer-side

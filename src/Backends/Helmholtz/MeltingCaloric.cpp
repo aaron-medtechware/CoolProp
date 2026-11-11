@@ -8,7 +8,7 @@
 #include <cmath>
 #include <functional>
 #include <map>
-#include <mutex>
+// #include <mutex>
 #include <stdexcept>
 #include <string>
 #include <Eigen/Dense>
@@ -247,9 +247,9 @@ void MeltingCaloric::build(HelmholtzEOSMixtureBackend& H) {
 std::shared_ptr<MeltingCaloric> get_melting_caloric_cached(HelmholtzEOSMixtureBackend& H) {
     if (!H.is_pure() || !H.has_melting_line()) return nullptr;
     static std::map<std::string, std::shared_ptr<MeltingCaloric>> cache;
-    static std::mutex mtx;
+    // static std::mutex mtx;
     const std::string key = H.fluid_names()[0];  // pure fluid: single name
-    std::scoped_lock lk(mtx);
+    // std::scoped_lock lk(mtx);
     auto it = cache.find(key);
     if (it != cache.end()) return it->second;
     auto mc = std::make_shared<MeltingCaloric>();

@@ -12,7 +12,7 @@
 #include "CoolProp/CoolPropFluid.h"
 #include "CoolProp/DataStructures.h"
 
-#include <mutex>
+// #include <mutex>
 #include <string>
 #include <vector>
 
@@ -43,9 +43,9 @@ Instances on different fluids also force a SETUP (a read of the fluid files)
 on nearly every call, and long operations such as phase envelopes hold the
 lock throughout, so concurrent REFPROP use is correct but not fast.
 */
-std::recursive_mutex& REFPROP_mutex();
+// std::recursive_mutex& REFPROP_mutex();
 /// RAII guard type for REFPROP_mutex()
-using REFPROPLock = std::scoped_lock<std::recursive_mutex>;
+// using REFPROPLock = std::scoped_lock<std::recursive_mutex>;
 
 /// Return the REFPROP .FLD stem for a CoolPropFluid.
 /// Falls back to `fallback` when REFPROPname is absent or the sentinel "N/A",
@@ -109,7 +109,7 @@ class REFPROPMixtureBackend : public AbstractState
 
    public:
     REFPROPMixtureBackend() : Ncomp(0), _mole_fractions_set(false) {
-        const REFPROPLock refprop_lock(REFPROP_mutex());
+        // const REFPROPLock refprop_lock(REFPROP_mutex());
         instance_counter++;
     }
 

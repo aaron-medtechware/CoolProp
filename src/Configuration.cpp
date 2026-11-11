@@ -1,7 +1,8 @@
 #include "CoolProp/Configuration.h"
 #include "CoolProp/detail/json.h"
-#include "src/Backends/REFPROP/REFPROPMixtureBackend.h"
-#include <mutex>
+// N2O-only: REFPROP configuration hooks disabled.
+// #include "src/Backends/REFPROP/REFPROPMixtureBackend.h"
+// #include <mutex>
 
 namespace {
 
@@ -125,15 +126,14 @@ configuration_keys config_string_to_key(const std::string& s) {
 };
 
 std::unique_ptr<Configuration> pconfig;
-// Thread-safe lazy initialization of the global configuration, matching the
-// FluidLibrary singleton.  The previous `if (!pconfig) pconfig = ...` pattern
-// raced when threads first-called get_/set_config_* concurrently: each could
-// construct its own instance, the last assignment won, and settings made
-// through a losing instance were silently lost.
-static std::once_flag pconfig_init_flag;
+// N2O-only single-threaded firmware: plain lazy init (no std::call_once / mutex).
+// static std::once_flag pconfig_init_flag;
 /// A helper function to ensure that configuration is not accessed before it is initialized (was formerly static)
 Configuration* _get_config() {
-    std::call_once(pconfig_init_flag, [] { pconfig = std::make_unique<Configuration>(); });
+    // std::call_once(pconfig_init_flag, [] { pconfig = std::make_unique<Configuration>(); });
+    if (!pconfig) {
+        pconfig = std::make_unique<Configuration>();
+    }
     return pconfig.get();
 }
 
@@ -146,16 +146,13 @@ Configuration* _get_config() {
  *  REFPROP library loaded).
  */
 static void on_config_changed(configuration_keys key) {
-    if (key == ALTERNATIVE_REFPROP_PATH || key == ALTERNATIVE_REFPROP_HMX_BNC_PATH || key == ALTERNATIVE_REFPROP_LIBRARY_PATH) {
-        // One lock across both steps: another thread could otherwise make a
-        // load attempt between them that is cached as failed and then
-        // cleared again, printing the load failure twice.
-        const REFPROPLock refprop_lock(REFPROP_mutex());
-        CoolProp::force_unload_REFPROP();
-        // The new path deserves a new load attempt, even if an earlier
-        // attempt (with the old path) failed and was cached.
-        CoolProp::REFPROPMixtureBackend::forget_REFPROP_load_failure();
-    }
+    // N2O-only: REFPROP unload side-effects disabled.
+    (void)key;
+    // if (key == ALTERNATIVE_REFPROP_PATH || key == ALTERNATIVE_REFPROP_HMX_BNC_PATH || key == ALTERNATIVE_REFPROP_LIBRARY_PATH) {
+    //     const REFPROPLock refprop_lock(REFPROP_mutex());
+    //     CoolProp::force_unload_REFPROP();
+    //     CoolProp::REFPROPMixtureBackend::forget_REFPROP_load_failure();
+    // }
 }
 
 void set_config_bool(configuration_keys key, bool val) {

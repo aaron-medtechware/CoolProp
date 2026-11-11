@@ -2,26 +2,30 @@
 #include "FluidLibrary.h"
 
 #include "CoolProp/detail/json.h"
-#include <mutex>
+// #include <mutex>
+#include <vector>
 
 #include "Backends/Helmholtz/HelmholtzEOSBackend.h"
+#include "miniz.h"
 
-#if defined(COOLPROP_NO_INCBIN)
-#    define INCBIN_CONST
-#    define INCBIN_ALIGN
-#    include "all_fluids_CBOR.h"
-#    undef INCBIN_CONST
-#    undef INCBIN_ALIGN
-#else
-#    include "incbin.h"
-// Use the magic of the incbin library to include the binary CBOR data
-#    if defined(_MSC_VER)
-#        include "all_fluids_CBOR.h"
-#    else
-
-INCBIN(all_fluids_CBOR, "all_fluids.cbor");
-#    endif
-#endif
+// N2O-only embedded build: ship zlib-compressed NitrousOxide.json instead of all_fluids.cbor.
+#include "NitrousOxide_JSON.h"
+// #if defined(COOLPROP_NO_INCBIN)
+// #    define INCBIN_CONST
+// #    define INCBIN_ALIGN
+// #    include "all_fluids_CBOR.h"
+// #    undef INCBIN_CONST
+// #    undef INCBIN_ALIGN
+// #else
+// #    include "incbin.h"
+// // Use the magic of the incbin library to include the binary CBOR data
+// #    if defined(_MSC_VER)
+// #        include "all_fluids_CBOR.h"
+// #    else
+//
+// INCBIN(all_fluids_CBOR, "all_fluids.cbor");
+// #    endif
+// #endif
 
 namespace CoolProp {
 
@@ -29,53 +33,26 @@ static JSONFluidLibrary library;
 
 void load();
 
-// Thread-safe lazy initialization of the global fluid library. The
-// previous `if (library.is_empty()) load();` pattern races when multiple
-// threads hit a cold cache simultaneously — multiple threads see the
-// library empty, all call load() concurrently, and the resulting
-// concurrent inserts into string_to_index_map / fluid_map leave the
-// library partially populated (gh-2787). std::call_once ensures load()
-// runs exactly once even under concurrent first calls; if load() throws,
-// the flag is left unset and the next call will retry.
-static std::once_flag library_load_flag;
+// Embedded single-threaded firmware: skip std::call_once / mutex.
+// static std::once_flag library_load_flag;
 
 static void ensure_library_loaded() {
-    std::call_once(library_load_flag, &load);
+    // std::call_once(library_load_flag, &load);
+    if (library.is_empty()) {
+        load();
+    }
 }
 
 void load() {
-    if (getenv("COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY")) {
-        std::cout << "CoolProp: superancillaries have been disabled because the COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY environment variable has "
-                     "been defined"
-                  << '\n';
+    // N2O-only: inflate the embedded zlib payload, then parse JSON.
+    std::vector<unsigned char> out(NitrousOxide_JSON_raw_len);
+    mz_ulong out_len = NitrousOxide_JSON_raw_len;
+    const int zerr = mz_uncompress(out.data(), &out_len, NitrousOxide_JSON_z, NitrousOxide_JSON_z_len);
+    if (zerr != MZ_OK || out_len != NitrousOxide_JSON_raw_len) {
+        throw ValueError("Failed to decompress embedded NitrousOxide JSON");
     }
-    // Let a CBOR-decode failure propagate (it did, as a parse error, before this
-    // migration): under std::call_once a thrown load() leaves the once-flag unset
-    // so the error surfaces and a later call can retry, rather than silently
-    // leaving the global library empty.
-    nlohmann::json dd = cpjson::from_cbor(gall_fluids_CBORData, gall_fluids_CBORSize);
-    // add_many is likewise left to throw.  It used to be wrapped in a handler
-    // that printed to stdout and returned, but add_many has no per-fluid try, so
-    // one bad fluid aborted the loop and every fluid after it in load order
-    // silently vanished -- the library came up truncated, with a stdout line as
-    // the only signal and no error state anywhere. Users saw an arbitrary subset
-    // of fluids reported as unknown.  The same data reaches add_fluids_as_JSON
-    // through a path that has always thrown, so the two entry points used to
-    // disagree about what a malformed fluid means.  This is shipped, CI-verified
-    // data: a throw here means the build is broken, and failing loudly at first
-    // use beats a silently partial library.
-    //
-    // The retry story differs from the from_cbor line above, which is why this
-    // is not a bare call.  from_cbor leaves no state behind, so a rethrow is
-    // simply retried.  add_many mutates the library in place and is NOT
-    // transactional: a mid-array failure leaves every fluid before it
-    // registered.  Since a thrown load() leaves the std::call_once flag unset,
-    // the next library access re-runs load() -- which would meet its own
-    // half-finished first attempt and throw "already in library" for fluid 0,
-    // naming the wrong fluid and pointing at OVERWRITE_FLUIDS instead of the
-    // real parse error.  Wrappers surface the most recent error, so that
-    // misleading message is the one users would actually see.  Resetting first
-    // makes every attempt report the same, true cause.
+    nlohmann::json one = nlohmann::json::parse(out.begin(), out.end());
+    nlohmann::json dd = nlohmann::json::array({one});
     try {
         library.add_many(dd);
     } catch (...) {

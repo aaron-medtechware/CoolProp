@@ -13,21 +13,25 @@
 #include <cstdlib>
 #include "boost/math/tools/toms748_solve.hpp"
 #include "CoolProp/AbstractState.h"
+#include "CoolProp/CoolProp.h"
 #include "CoolProp/FactoryOptions.h"
 #include "CoolProp/DataStructures.h"
+#include "CoolProp/numerics/MatrixMath.h"
 #include "qmass_conversions.h"
-#include "Backends/IF97/IF97Backend.h"
-#include "Backends/Bollengier/BollengierBackend.h"
-#include "Backends/Cubics/CubicBackend.h"
-#include "Backends/Cubics/VTPRBackend.h"
-#include "Backends/Incompressible/IncompressibleBackend.h"
-#include "Backends/PCSAFT/PCSAFTBackend.h"
+// N2O-only embedded build: HEOS is registered from HelmholtzEOSMixtureBackend.cpp.
+// Comment out every other backend family so they are not pulled into the link.
+// #include "Backends/IF97/IF97Backend.h"
+// #include "Backends/Bollengier/BollengierBackend.h"
+// #include "Backends/Cubics/CubicBackend.h"
+// #include "Backends/Cubics/VTPRBackend.h"
+// #include "Backends/Incompressible/IncompressibleBackend.h"
+// #include "Backends/PCSAFT/PCSAFTBackend.h"
 
-#if !defined(NO_TABULAR_BACKENDS)
-#include "Backends/Tabular/TTSEBackend.h"
-#include "Backends/Tabular/BicubicBackend.h"
-#endif
-#include "CoolProp/Backends/SVDSBTL/SVDSBTLBackend.h"
+// #if !defined(NO_TABULAR_BACKENDS)
+// #include "Backends/Tabular/TTSEBackend.h"
+// #include "Backends/Tabular/BicubicBackend.h"
+// #endif
+// #include "CoolProp/Backends/SVDSBTL/SVDSBTLBackend.h"
 
 namespace CoolProp {
 
@@ -82,100 +86,90 @@ AbstractState* AbstractStateGenerator::get_AbstractState(const std::vector<std::
                               "docs/superpowers/specs/2026-05-16-backend-options-string-design.md).");
 }
 
-class IF97BackendGenerator : public AbstractStateGenerator
-{
-   public:
-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        if (fluid_names.size() == 1) {                // Check that fluid_names[0] has only one component
-            const std::string& str = fluid_names[0];  // Check that the fluid name is an alias for "Water"
-            if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
-                return new IF97Backend();
-            } else {
-                throw ValueError(format("The IF97 backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
-            }
-        } else {
-            throw ValueError(format("The IF97 backend does not support mixtures, only Water"));
-        };
-    };
-};
-// This static initialization will cause the generator to register.
-// GeneratorInitializer's constructor only inserts a single entry into a
-// std::map keyed by backend_family; in practice this cannot throw under
-// normal startup, and if std::bad_alloc fires here the process is
-// unrecoverable anyway. NOLINT rather than convert to call_once + lazy
-// registration (option 1 from #2874) which would be the cleaner refactor
-// but is out of this PR's scope.
+// class IF97BackendGenerator : public AbstractStateGenerator
+// {
+//    public:
+//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         if (fluid_names.size() == 1) {                // Check that fluid_names[0] has only one component
+//             const std::string& str = fluid_names[0];  // Check that the fluid name is an alias for "Water"
+//             if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
+//                 return new IF97Backend();
+//             } else {
+//                 throw ValueError(format("The IF97 backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
+//             }
+//         } else {
+//             throw ValueError(format("The IF97 backend does not support mixtures, only Water"));
+//         };
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static GeneratorInitializer<IF97BackendGenerator> if97_gen(IF97_BACKEND_FAMILY);
+// static GeneratorInitializer<IF97BackendGenerator> if97_gen(IF97_BACKEND_FAMILY);
 
-class BollengierBackendGenerator : public AbstractStateGenerator
-{
-   public:
-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        if (fluid_names.size() != 1) {
-            throw ValueError(format("The Bollengier backend does not support mixtures, only Water"));
-        }
-        const std::string& str = fluid_names[0];
-        if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
-            return new BollengierBackend();
-        }
-        throw ValueError(format("The Bollengier backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
-    };
-};
+// class BollengierBackendGenerator : public AbstractStateGenerator
+// {
+//    public:
+//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         if (fluid_names.size() != 1) {
+//             throw ValueError(format("The Bollengier backend does not support mixtures, only Water"));
+//         }
+//         const std::string& str = fluid_names[0];
+//         if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
+//             return new BollengierBackend();
+//         }
+//         throw ValueError(format("The Bollengier backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static GeneratorInitializer<BollengierBackendGenerator> bollengier_gen(BOLLENGIER_BACKEND_FAMILY);
-class SRKGenerator : public AbstractStateGenerator
-{
-   public:
-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        return new SRKBackend(fluid_names, get_config_double(R_U_CODATA));
-    };
-};
+// static GeneratorInitializer<BollengierBackendGenerator> bollengier_gen(BOLLENGIER_BACKEND_FAMILY);
+// class SRKGenerator : public AbstractStateGenerator
+// {
+//    public:
+//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         return new SRKBackend(fluid_names, get_config_double(R_U_CODATA));
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static GeneratorInitializer<SRKGenerator> srk_gen(CoolProp::SRK_BACKEND_FAMILY);
-class PRGenerator : public AbstractStateGenerator
-{
-   public:
-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        return new PengRobinsonBackend(fluid_names, get_config_double(R_U_CODATA));
-    };
-};
+// static GeneratorInitializer<SRKGenerator> srk_gen(CoolProp::SRK_BACKEND_FAMILY);
+// class PRGenerator : public AbstractStateGenerator
+// {
+//    public:
+//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         return new PengRobinsonBackend(fluid_names, get_config_double(R_U_CODATA));
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static GeneratorInitializer<PRGenerator> pr_gen(CoolProp::PR_BACKEND_FAMILY);
-class IncompressibleBackendGenerator : public AbstractStateGenerator
-{
-   public:
-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        if (fluid_names.size() != 1) {
-            throw ValueError(format("For INCOMP backend, name vector must be one element long"));
-        }
-        return new IncompressibleBackend(fluid_names[0]);
-    };
-};
-// This static initialization will cause the generator to register
+// static GeneratorInitializer<PRGenerator> pr_gen(CoolProp::PR_BACKEND_FAMILY);
+// class IncompressibleBackendGenerator : public AbstractStateGenerator
+// {
+//    public:
+//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         if (fluid_names.size() != 1) {
+//             throw ValueError(format("For INCOMP backend, name vector must be one element long"));
+//         }
+//         return new IncompressibleBackend(fluid_names[0]);
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static GeneratorInitializer<IncompressibleBackendGenerator> incomp_gen(INCOMP_BACKEND_FAMILY);
-class VTPRGenerator : public CoolProp::AbstractStateGenerator
-{
-   public:
-    CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        return new CoolProp::VTPRBackend(fluid_names, CoolProp::get_config_double(R_U_CODATA));
-    };
-};
-// This static initialization will cause the generator to register
+// static GeneratorInitializer<IncompressibleBackendGenerator> incomp_gen(INCOMP_BACKEND_FAMILY);
+// class VTPRGenerator : public CoolProp::AbstractStateGenerator
+// {
+//    public:
+//     CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         return new CoolProp::VTPRBackend(fluid_names, CoolProp::get_config_double(R_U_CODATA));
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static CoolProp::GeneratorInitializer<VTPRGenerator> vtpr_gen(CoolProp::VTPR_BACKEND_FAMILY);
+// static CoolProp::GeneratorInitializer<VTPRGenerator> vtpr_gen(CoolProp::VTPR_BACKEND_FAMILY);
 
-class PCSAFTGenerator : public CoolProp::AbstractStateGenerator
-{
-   public:
-    CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
-        return new CoolProp::PCSAFTBackend(fluid_names);
-    };
-};
-// This static initialization will cause the generator to register
+// class PCSAFTGenerator : public CoolProp::AbstractStateGenerator
+// {
+//    public:
+//     CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+//         return new CoolProp::PCSAFTBackend(fluid_names);
+//     };
+// };
 // NOLINTNEXTLINE(cert-err58-cpp)
-static CoolProp::GeneratorInitializer<PCSAFTGenerator> pcsaft_gen(CoolProp::PCSAFT_BACKEND_FAMILY);
+// static CoolProp::GeneratorInitializer<PCSAFTGenerator> pcsaft_gen(CoolProp::PCSAFT_BACKEND_FAMILY);
 
 // SVDSBTL has no AbstractStateGenerator because the standard
 // generator API only knows about (backend_family, fluid_names) — it
@@ -251,34 +245,34 @@ AbstractState* AbstractState::factory(const std::string& backend, const std::vec
         // One of the registered backends was able to match the given backend family
         return gen->second->get_AbstractState(clean_fluid_names, options_json);
     }
-#if !defined(NO_TABULAR_BACKENDS)
-    else if (f1 == TTSE_BACKEND_FAMILY) {
-        // Will throw if there is a problem with this backend.  The JSON
-        // options payload is forwarded verbatim to the constructor, which
-        // validates against kTabularOptionsSchemaJson before applying.
-        const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
-        return new TTSEBackend(AS, options_json);
-    } else if (f1 == BICUBIC_BACKEND_FAMILY) {
-        const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
-        return new BicubicBackend(AS, options_json);
-    } else if (f1 == SVDSBTL_BACKEND_FAMILY) {
-        // SVDSBTL requires an explicit source-of-truth backend in
-        // its name (e.g. "SVDSBTL&HEOS").  No default — see
-        // SVDSBTLBackend.h for rationale.  factory("SVDSBTL", ...)
-        // without the '&' lands here with f2 empty and throws.
-        if (f2.empty()) {
-            throw ValueError(format(R"(SVDSBTL requires an explicit source backend, e.g. factory("SVDSBTL&HEOS", "%s"))",
-                                    clean_fluid_names.empty() ? "<fluid>" : clean_fluid_names[0].c_str()));
-        }
-        if (clean_fluid_names.size() != 1) {
-            throw ValueError("SVDSBTL backend is pure-fluid only; expected exactly one fluid name");
-        }
-        // SVDSBTL is opted in to factory-string options: the JSON
-        // payload is forwarded verbatim to the constructor, which
-        // validates against kSVDSBTLOptionsSchemaJson before applying.
-        return new SVDSBTLBackend(clean_fluid_names[0], f2, options_json);
-    }
-#endif
+// #if !defined(NO_TABULAR_BACKENDS)
+//     else if (f1 == TTSE_BACKEND_FAMILY) {
+//         // Will throw if there is a problem with this backend.  The JSON
+//         // options payload is forwarded verbatim to the constructor, which
+//         // validates against kTabularOptionsSchemaJson before applying.
+//         const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
+//         return new TTSEBackend(AS, options_json);
+//     } else if (f1 == BICUBIC_BACKEND_FAMILY) {
+//         const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
+//         return new BicubicBackend(AS, options_json);
+//     } else if (f1 == SVDSBTL_BACKEND_FAMILY) {
+//         // SVDSBTL requires an explicit source-of-truth backend in
+//         // its name (e.g. "SVDSBTL&HEOS").  No default — see
+//         // SVDSBTLBackend.h for rationale.  factory("SVDSBTL", ...)
+//         // without the '&' lands here with f2 empty and throws.
+//         if (f2.empty()) {
+//             throw ValueError(format(R"(SVDSBTL requires an explicit source backend, e.g. factory("SVDSBTL&HEOS", "%s"))",
+//                                     clean_fluid_names.empty() ? "<fluid>" : clean_fluid_names[0].c_str()));
+//         }
+//         if (clean_fluid_names.size() != 1) {
+//             throw ValueError("SVDSBTL backend is pure-fluid only; expected exactly one fluid name");
+//         }
+//         // SVDSBTL is opted in to factory-string options: the JSON
+//         // payload is forwarded verbatim to the constructor, which
+//         // validates against kSVDSBTLOptionsSchemaJson before applying.
+//         return new SVDSBTLBackend(clean_fluid_names[0], f2, options_json);
+//     }
+// #endif
     else if (clean_backend == "?" || clean_backend.empty()) {
         // Backend has not been specified, and we have to figure out what
         // the backend is by parsing the (already-stripped) fluid string.

@@ -1,0 +1,2896 @@
+diff --git a/include/CoolProp/CoolPropFluid.h b/include/CoolProp/CoolPropFluid.h
+index 1053961b..4cc90aa5 100644
+--- a/include/CoolProp/CoolPropFluid.h
++++ b/include/CoolProp/CoolPropFluid.h
+@@ -485,10 +485,12 @@ class EquationOfState
+     /// The shared_ptr is constructed lazily on first call and then shared among all
+     /// copies of this EOS object, making CoolPropFluid copying O(1).
+     std::shared_ptr<SuperAncillary_t> get_superanc() {
+-        if (!superancillaries && !superancillaries_str.empty()) {
+-            superancillaries = std::make_shared<SuperAncillary_t>(superancillaries_str);
+-        }
+-        return superancillaries;
++        // N2O-only embedded build ships no SUPERANCILLARY tables.
++        return nullptr;
++        // if (!superancillaries && !superancillaries_str.empty()) {
++        //     superancillaries = std::make_shared<SuperAncillary_t>(superancillaries_str);
++        // }
++        // return superancillaries;
+     }
+ 
+     /// Set the placeholder string for the superancillaries to allow for lazy construction, particularly important in debug builds
+diff --git a/include/CoolProp/CoolPropLib.h b/include/CoolProp/CoolPropLib.h
+index ca2b8530..d330b6f2 100644
+--- a/include/CoolProp/CoolPropLib.h
++++ b/include/CoolProp/CoolPropLib.h
+@@ -34,7 +34,7 @@
+ #elif __powerpc__
+ #    define __ISPOWERPC__
+ #else
+-#    pragma error
++// #    pragma error
+ #endif
+ 
+ // Backwards compatibility: COOLPROP_LIB historically selected producer-side
+diff --git a/include/CoolProp/detail/PlatformDetermination.h b/include/CoolProp/detail/PlatformDetermination.h
+index 2077eaaf..69ded584 100644
+--- a/include/CoolProp/detail/PlatformDetermination.h
++++ b/include/CoolProp/detail/PlatformDetermination.h
+@@ -13,7 +13,7 @@
+ #elif __powerpc__
+ #    define __ISPOWERPC__
+ #else
+-#    pragma error
++// #    pragma error
+ #endif
+ 
+ #endif
+diff --git a/include/CoolProp/detail/json.h b/include/CoolProp/detail/json.h
+index 6cb5eefe..869f7ab2 100644
+--- a/include/CoolProp/detail/json.h
++++ b/include/CoolProp/detail/json.h
+@@ -27,10 +27,10 @@
+ #include <vector>
+ 
+ #include <nlohmann/json.hpp>
+-#include <valijson/adapters/nlohmann_json_adapter.hpp>
+-#include <valijson/schema.hpp>
+-#include <valijson/schema_parser.hpp>
+-#include <valijson/validator.hpp>
++// #include <valijson/adapters/nlohmann_json_adapter.hpp>
++// #include <valijson/schema.hpp>
++// #include <valijson/schema_parser.hpp>
++// #include <valijson/validator.hpp>
+ 
+ namespace cpjson {
+ 
+@@ -183,6 +183,7 @@ enum schema_validation_code
+ /// schema string. On a validation failure, `errstr` receives a
+ /// human-comprehensible description. Never propagates a raw nlohmann or
+ /// Valijson exception to the caller.
++/*
+ inline schema_validation_code validate_schema(std::string_view schemaJson, std::string_view inputJson, std::string& errstr) {
+     nlohmann::json schemaDoc;
+     try {
+@@ -231,6 +232,7 @@ inline schema_validation_code validate_schema(std::string_view schemaJson, std::
+     }
+     return SCHEMA_VALIDATION_OK;
+ }
++*/
+ 
+ }  // namespace cpjson
+ 
+diff --git a/include/CoolProp/detail/strings.h b/include/CoolProp/detail/strings.h
+index b07b3ae2..f87f1e02 100644
+--- a/include/CoolProp/detail/strings.h
++++ b/include/CoolProp/detail/strings.h
+@@ -7,17 +7,17 @@
+ #include <system_error>
+ #include <vector>
+ 
+-#if !defined(NO_FMTLIB)
+-#    ifndef FMT_HEADER_ONLY
+-#        define FMT_HEADER_ONLY
+-#    endif
+-#    include "fmt/format.h"  // For addition of the string formatting functions and macros from fmtlib
+-#    include "fmt/printf.h"  // For sprintf
+-#    undef FMT_HEADER_ONLY
+-#else
++// #if !defined(NO_FMTLIB)
++// #    ifndef FMT_HEADER_ONLY
++// #        define FMT_HEADER_ONLY
++// #    endif
++// #    include "fmt/format.h"  // For addition of the string formatting functions and macros from fmtlib
++// #    include "fmt/printf.h"  // For sprintf
++// #    undef FMT_HEADER_ONLY
++// #else
+ #    include <vector>
+ #    include <string>
+-#endif
++// #endif
+ 
+ #include "CoolProp/Exceptions.h"
+ 
+@@ -71,20 +71,20 @@ inline bool endswith(const std::string& s1, const std::string& s2) {
+     return lhs == rhs;
+ }
+ 
+-#if defined(NO_FMTLIB)
++// #if defined(NO_FMTLIB)
+ // Missing string formatting function, this old guy is needed for ancient gcc compilers on PowerPC for VxWorks
+ inline std::string format(const char* fmt, ...);
+-#elif FMT_VERSION >= 50000
+-template <typename... Args>
+-inline std::string format(const char* format_str, const Args&... args) {
+-    return fmt::sprintf(format_str, args...);
+-}
+-#else
+-inline std::string format(const char* format, fmt::ArgList args) {
+-    return fmt::sprintf(format, args);
+-}
+-FMT_VARIADIC(std::string, format, const char*)
+-#endif
++// #elif FMT_VERSION >= 50000
++// template <typename... Args>
++// inline std::string format(const char* format_str, const Args&... args) {
++//     return fmt::sprintf(format_str, args...);
++// }
++// #else
++// inline std::string format(const char* format, fmt::ArgList args) {
++//     return fmt::sprintf(format, args);
++// }
++// FMT_VARIADIC(std::string, format, const char*)
++// #endif
+ 
+ // Missing string split - like in Python
+ std::vector<std::string> strsplit(const std::string& s, char del);
+diff --git a/include/CoolProp/superancillary/superancillary.h b/include/CoolProp/superancillary/superancillary.h
+index 6f937683..e701e212 100644
+--- a/include/CoolProp/superancillary/superancillary.h
++++ b/include/CoolProp/superancillary/superancillary.h
+@@ -36,7 +36,7 @@ Subsequent edits by Ian Bell
+ #include <atomic>
+ #include <cmath>
+ #include <cstdio>
+-#include <mutex>
++// #include <mutex>
+ #include <set>
+ #include <utility>
+ #include <optional>
+@@ -871,7 +871,7 @@ class SuperAncillary
+     /// (m_hL/m_hV/m_sL/m_sV/m_uL/m_uV/m_invlnp). The fixed approximations
+     /// (m_rhoL/m_rhoV/m_p) and the const data are read-only after construction
+     /// and need no synchronization. See #2773 review C2.
+-    mutable std::mutex m_lazy_build_mutex;
++    // mutable std::mutex m_lazy_build_mutex;
+ 
+     /// Stamp recording the IdealHelmholtzEnthalpyEntropyOffset (a1, a2) that
+     /// the cached caloric superancillaries (m_hL/m_hV/m_sL/m_sV) were built
+@@ -998,7 +998,7 @@ class SuperAncillary
+     /// (e.g. if the prefactor or Core offset ever becomes runtime-mutable),
+     /// but no current code calls it. See #2773.
+     void clear_caloric_variables() {
+-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
++        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+         m_hL.reset();
+         m_hV.reset();
+         m_sL.reset();
+@@ -1024,7 +1024,7 @@ class SuperAncillary
+         // optional::has_value() is technically a data race per the C++
+         // standard. An uncontended mutex acquire is ~20 ns — much less than a
+         // single EOS-side h/s/u evaluation.
+-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
++        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+         if (m_hL.has_value() && m_hV.has_value() && m_sL.has_value() && m_sV.has_value() && m_uL.has_value() && m_uV.has_value()) {
+             return;  // already built; stamp captured at first build, never invalidated
+         }
+@@ -1041,7 +1041,7 @@ class SuperAncillary
+     /// Get the (a1, a2) stamp recorded when the caloric superancillaries were
+     /// first built. Returns nullopt if not yet built.
+     std::optional<std::pair<double, double>> get_caloric_alpha0_stamp() const {
+-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
++        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+         return m_caloric_alpha0_stamp;
+     }
+ 
+@@ -1076,7 +1076,7 @@ class SuperAncillary
+     /// that guards H/S/U construction so concurrent first-call accesses
+     /// from threads on different HEOS instances of the same fluid don't race.
+     const auto& get_invlnp() {
+-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
++        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+         if (!m_invlnp) {
+             // Degree of expansion is the same as
+             auto Ndegree = m_p.get_expansions()[0].coeff().size() - 1;
+@@ -1118,7 +1118,7 @@ class SuperAncillary
+      hold the mutex (e.g. ensure_HS_under_lock) must use add_variable_locked.
+      */
+     void add_variable(char var, const std::function<double(double, double)>& caller) {
+-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
++        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+         add_variable_locked(var, caller);
+     }
+ 
+diff --git a/src/AbstractState.cpp b/src/AbstractState.cpp
+index 9bd052aa..3e42cd19 100644
+--- a/src/AbstractState.cpp
++++ b/src/AbstractState.cpp
+@@ -13,21 +13,25 @@
+ #include <cstdlib>
+ #include "boost/math/tools/toms748_solve.hpp"
+ #include "CoolProp/AbstractState.h"
++#include "CoolProp/CoolProp.h"
+ #include "CoolProp/FactoryOptions.h"
+ #include "CoolProp/DataStructures.h"
++#include "CoolProp/numerics/MatrixMath.h"
+ #include "qmass_conversions.h"
+-#include "Backends/IF97/IF97Backend.h"
+-#include "Backends/Bollengier/BollengierBackend.h"
+-#include "Backends/Cubics/CubicBackend.h"
+-#include "Backends/Cubics/VTPRBackend.h"
+-#include "Backends/Incompressible/IncompressibleBackend.h"
+-#include "Backends/PCSAFT/PCSAFTBackend.h"
+-
+-#if !defined(NO_TABULAR_BACKENDS)
+-#include "Backends/Tabular/TTSEBackend.h"
+-#include "Backends/Tabular/BicubicBackend.h"
+-#endif
+-#include "CoolProp/Backends/SVDSBTL/SVDSBTLBackend.h"
++// N2O-only embedded build: HEOS is registered from HelmholtzEOSMixtureBackend.cpp.
++// Comment out every other backend family so they are not pulled into the link.
++// #include "Backends/IF97/IF97Backend.h"
++// #include "Backends/Bollengier/BollengierBackend.h"
++// #include "Backends/Cubics/CubicBackend.h"
++// #include "Backends/Cubics/VTPRBackend.h"
++// #include "Backends/Incompressible/IncompressibleBackend.h"
++// #include "Backends/PCSAFT/PCSAFTBackend.h"
++
++// #if !defined(NO_TABULAR_BACKENDS)
++// #include "Backends/Tabular/TTSEBackend.h"
++// #include "Backends/Tabular/BicubicBackend.h"
++// #endif
++// #include "CoolProp/Backends/SVDSBTL/SVDSBTLBackend.h"
+ 
+ namespace CoolProp {
+ 
+@@ -82,100 +86,90 @@ AbstractState* AbstractStateGenerator::get_AbstractState(const std::vector<std::
+                               "docs/superpowers/specs/2026-05-16-backend-options-string-design.md).");
+ }
+ 
+-class IF97BackendGenerator : public AbstractStateGenerator
+-{
+-   public:
+-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        if (fluid_names.size() == 1) {                // Check that fluid_names[0] has only one component
+-            const std::string& str = fluid_names[0];  // Check that the fluid name is an alias for "Water"
+-            if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
+-                return new IF97Backend();
+-            } else {
+-                throw ValueError(format("The IF97 backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
+-            }
+-        } else {
+-            throw ValueError(format("The IF97 backend does not support mixtures, only Water"));
+-        };
+-    };
+-};
+-// This static initialization will cause the generator to register.
+-// GeneratorInitializer's constructor only inserts a single entry into a
+-// std::map keyed by backend_family; in practice this cannot throw under
+-// normal startup, and if std::bad_alloc fires here the process is
+-// unrecoverable anyway. NOLINT rather than convert to call_once + lazy
+-// registration (option 1 from #2874) which would be the cleaner refactor
+-// but is out of this PR's scope.
++// class IF97BackendGenerator : public AbstractStateGenerator
++// {
++//    public:
++//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         if (fluid_names.size() == 1) {                // Check that fluid_names[0] has only one component
++//             const std::string& str = fluid_names[0];  // Check that the fluid name is an alias for "Water"
++//             if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
++//                 return new IF97Backend();
++//             } else {
++//                 throw ValueError(format("The IF97 backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
++//             }
++//         } else {
++//             throw ValueError(format("The IF97 backend does not support mixtures, only Water"));
++//         };
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static GeneratorInitializer<IF97BackendGenerator> if97_gen(IF97_BACKEND_FAMILY);
+-
+-class BollengierBackendGenerator : public AbstractStateGenerator
+-{
+-   public:
+-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        if (fluid_names.size() != 1) {
+-            throw ValueError(format("The Bollengier backend does not support mixtures, only Water"));
+-        }
+-        const std::string& str = fluid_names[0];
+-        if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
+-            return new BollengierBackend();
+-        }
+-        throw ValueError(format("The Bollengier backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
+-    };
+-};
++// static GeneratorInitializer<IF97BackendGenerator> if97_gen(IF97_BACKEND_FAMILY);
++
++// class BollengierBackendGenerator : public AbstractStateGenerator
++// {
++//    public:
++//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         if (fluid_names.size() != 1) {
++//             throw ValueError(format("The Bollengier backend does not support mixtures, only Water"));
++//         }
++//         const std::string& str = fluid_names[0];
++//         if ((upper(str) == "WATER") || (upper(str) == "H2O")) {
++//             return new BollengierBackend();
++//         }
++//         throw ValueError(format("The Bollengier backend returns Water props only; fluid name [%s] not allowed", fluid_names[0].c_str()));
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static GeneratorInitializer<BollengierBackendGenerator> bollengier_gen(BOLLENGIER_BACKEND_FAMILY);
+-class SRKGenerator : public AbstractStateGenerator
+-{
+-   public:
+-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        return new SRKBackend(fluid_names, get_config_double(R_U_CODATA));
+-    };
+-};
++// static GeneratorInitializer<BollengierBackendGenerator> bollengier_gen(BOLLENGIER_BACKEND_FAMILY);
++// class SRKGenerator : public AbstractStateGenerator
++// {
++//    public:
++//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         return new SRKBackend(fluid_names, get_config_double(R_U_CODATA));
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static GeneratorInitializer<SRKGenerator> srk_gen(CoolProp::SRK_BACKEND_FAMILY);
+-class PRGenerator : public AbstractStateGenerator
+-{
+-   public:
+-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        return new PengRobinsonBackend(fluid_names, get_config_double(R_U_CODATA));
+-    };
+-};
++// static GeneratorInitializer<SRKGenerator> srk_gen(CoolProp::SRK_BACKEND_FAMILY);
++// class PRGenerator : public AbstractStateGenerator
++// {
++//    public:
++//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         return new PengRobinsonBackend(fluid_names, get_config_double(R_U_CODATA));
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static GeneratorInitializer<PRGenerator> pr_gen(CoolProp::PR_BACKEND_FAMILY);
+-class IncompressibleBackendGenerator : public AbstractStateGenerator
+-{
+-   public:
+-    AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        if (fluid_names.size() != 1) {
+-            throw ValueError(format("For INCOMP backend, name vector must be one element long"));
+-        }
+-        return new IncompressibleBackend(fluid_names[0]);
+-    };
+-};
+-// This static initialization will cause the generator to register
++// static GeneratorInitializer<PRGenerator> pr_gen(CoolProp::PR_BACKEND_FAMILY);
++// class IncompressibleBackendGenerator : public AbstractStateGenerator
++// {
++//    public:
++//     AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         if (fluid_names.size() != 1) {
++//             throw ValueError(format("For INCOMP backend, name vector must be one element long"));
++//         }
++//         return new IncompressibleBackend(fluid_names[0]);
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static GeneratorInitializer<IncompressibleBackendGenerator> incomp_gen(INCOMP_BACKEND_FAMILY);
+-class VTPRGenerator : public CoolProp::AbstractStateGenerator
+-{
+-   public:
+-    CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        return new CoolProp::VTPRBackend(fluid_names, CoolProp::get_config_double(R_U_CODATA));
+-    };
+-};
+-// This static initialization will cause the generator to register
++// static GeneratorInitializer<IncompressibleBackendGenerator> incomp_gen(INCOMP_BACKEND_FAMILY);
++// class VTPRGenerator : public CoolProp::AbstractStateGenerator
++// {
++//    public:
++//     CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         return new CoolProp::VTPRBackend(fluid_names, CoolProp::get_config_double(R_U_CODATA));
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static CoolProp::GeneratorInitializer<VTPRGenerator> vtpr_gen(CoolProp::VTPR_BACKEND_FAMILY);
+-
+-class PCSAFTGenerator : public CoolProp::AbstractStateGenerator
+-{
+-   public:
+-    CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
+-        return new CoolProp::PCSAFTBackend(fluid_names);
+-    };
+-};
+-// This static initialization will cause the generator to register
++// static CoolProp::GeneratorInitializer<VTPRGenerator> vtpr_gen(CoolProp::VTPR_BACKEND_FAMILY);
++
++// class PCSAFTGenerator : public CoolProp::AbstractStateGenerator
++// {
++//    public:
++//     CoolProp::AbstractState* get_AbstractState(const std::vector<std::string>& fluid_names) override {
++//         return new CoolProp::PCSAFTBackend(fluid_names);
++//     };
++// };
+ // NOLINTNEXTLINE(cert-err58-cpp)
+-static CoolProp::GeneratorInitializer<PCSAFTGenerator> pcsaft_gen(CoolProp::PCSAFT_BACKEND_FAMILY);
++// static CoolProp::GeneratorInitializer<PCSAFTGenerator> pcsaft_gen(CoolProp::PCSAFT_BACKEND_FAMILY);
+ 
+ // SVDSBTL has no AbstractStateGenerator because the standard
+ // generator API only knows about (backend_family, fluid_names) — it
+@@ -251,34 +245,34 @@ AbstractState* AbstractState::factory(const std::string& backend, const std::vec
+         // One of the registered backends was able to match the given backend family
+         return gen->second->get_AbstractState(clean_fluid_names, options_json);
+     }
+-#if !defined(NO_TABULAR_BACKENDS)
+-    else if (f1 == TTSE_BACKEND_FAMILY) {
+-        // Will throw if there is a problem with this backend.  The JSON
+-        // options payload is forwarded verbatim to the constructor, which
+-        // validates against kTabularOptionsSchemaJson before applying.
+-        const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
+-        return new TTSEBackend(AS, options_json);
+-    } else if (f1 == BICUBIC_BACKEND_FAMILY) {
+-        const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
+-        return new BicubicBackend(AS, options_json);
+-    } else if (f1 == SVDSBTL_BACKEND_FAMILY) {
+-        // SVDSBTL requires an explicit source-of-truth backend in
+-        // its name (e.g. "SVDSBTL&HEOS").  No default — see
+-        // SVDSBTLBackend.h for rationale.  factory("SVDSBTL", ...)
+-        // without the '&' lands here with f2 empty and throws.
+-        if (f2.empty()) {
+-            throw ValueError(format(R"(SVDSBTL requires an explicit source backend, e.g. factory("SVDSBTL&HEOS", "%s"))",
+-                                    clean_fluid_names.empty() ? "<fluid>" : clean_fluid_names[0].c_str()));
+-        }
+-        if (clean_fluid_names.size() != 1) {
+-            throw ValueError("SVDSBTL backend is pure-fluid only; expected exactly one fluid name");
+-        }
+-        // SVDSBTL is opted in to factory-string options: the JSON
+-        // payload is forwarded verbatim to the constructor, which
+-        // validates against kSVDSBTLOptionsSchemaJson before applying.
+-        return new SVDSBTLBackend(clean_fluid_names[0], f2, options_json);
+-    }
+-#endif
++// #if !defined(NO_TABULAR_BACKENDS)
++//     else if (f1 == TTSE_BACKEND_FAMILY) {
++//         // Will throw if there is a problem with this backend.  The JSON
++//         // options payload is forwarded verbatim to the constructor, which
++//         // validates against kTabularOptionsSchemaJson before applying.
++//         const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
++//         return new TTSEBackend(AS, options_json);
++//     } else if (f1 == BICUBIC_BACKEND_FAMILY) {
++//         const shared_ptr<AbstractState> AS(factory(f2, clean_fluid_names));
++//         return new BicubicBackend(AS, options_json);
++//     } else if (f1 == SVDSBTL_BACKEND_FAMILY) {
++//         // SVDSBTL requires an explicit source-of-truth backend in
++//         // its name (e.g. "SVDSBTL&HEOS").  No default — see
++//         // SVDSBTLBackend.h for rationale.  factory("SVDSBTL", ...)
++//         // without the '&' lands here with f2 empty and throws.
++//         if (f2.empty()) {
++//             throw ValueError(format(R"(SVDSBTL requires an explicit source backend, e.g. factory("SVDSBTL&HEOS", "%s"))",
++//                                     clean_fluid_names.empty() ? "<fluid>" : clean_fluid_names[0].c_str()));
++//         }
++//         if (clean_fluid_names.size() != 1) {
++//             throw ValueError("SVDSBTL backend is pure-fluid only; expected exactly one fluid name");
++//         }
++//         // SVDSBTL is opted in to factory-string options: the JSON
++//         // payload is forwarded verbatim to the constructor, which
++//         // validates against kSVDSBTLOptionsSchemaJson before applying.
++//         return new SVDSBTLBackend(clean_fluid_names[0], f2, options_json);
++//     }
++// #endif
+     else if (clean_backend == "?" || clean_backend.empty()) {
+         // Backend has not been specified, and we have to figure out what
+         // the backend is by parsing the (already-stripped) fluid string.
+diff --git a/src/Backends/Helmholtz/Fluids/FluidLibrary.cpp b/src/Backends/Helmholtz/Fluids/FluidLibrary.cpp
+index bbb0b902..094d5d68 100644
+--- a/src/Backends/Helmholtz/Fluids/FluidLibrary.cpp
++++ b/src/Backends/Helmholtz/Fluids/FluidLibrary.cpp
+@@ -2,26 +2,30 @@
+ #include "FluidLibrary.h"
+ 
+ #include "CoolProp/detail/json.h"
+-#include <mutex>
++// #include <mutex>
++#include <vector>
+ 
+ #include "Backends/Helmholtz/HelmholtzEOSBackend.h"
+-
+-#if defined(COOLPROP_NO_INCBIN)
+-#    define INCBIN_CONST
+-#    define INCBIN_ALIGN
+-#    include "all_fluids_CBOR.h"
+-#    undef INCBIN_CONST
+-#    undef INCBIN_ALIGN
+-#else
+-#    include "incbin.h"
+-// Use the magic of the incbin library to include the binary CBOR data
+-#    if defined(_MSC_VER)
+-#        include "all_fluids_CBOR.h"
+-#    else
+-
+-INCBIN(all_fluids_CBOR, "all_fluids.cbor");
+-#    endif
+-#endif
++#include "miniz.h"
++
++// N2O-only embedded build: ship zlib-compressed NitrousOxide.json instead of all_fluids.cbor.
++#include "NitrousOxide_JSON.h"
++// #if defined(COOLPROP_NO_INCBIN)
++// #    define INCBIN_CONST
++// #    define INCBIN_ALIGN
++// #    include "all_fluids_CBOR.h"
++// #    undef INCBIN_CONST
++// #    undef INCBIN_ALIGN
++// #else
++// #    include "incbin.h"
++// // Use the magic of the incbin library to include the binary CBOR data
++// #    if defined(_MSC_VER)
++// #        include "all_fluids_CBOR.h"
++// #    else
++//
++// INCBIN(all_fluids_CBOR, "all_fluids.cbor");
++// #    endif
++// #endif
+ 
+ namespace CoolProp {
+ 
+@@ -29,53 +33,26 @@ static JSONFluidLibrary library;
+ 
+ void load();
+ 
+-// Thread-safe lazy initialization of the global fluid library. The
+-// previous `if (library.is_empty()) load();` pattern races when multiple
+-// threads hit a cold cache simultaneously — multiple threads see the
+-// library empty, all call load() concurrently, and the resulting
+-// concurrent inserts into string_to_index_map / fluid_map leave the
+-// library partially populated (gh-2787). std::call_once ensures load()
+-// runs exactly once even under concurrent first calls; if load() throws,
+-// the flag is left unset and the next call will retry.
+-static std::once_flag library_load_flag;
++// Embedded single-threaded firmware: skip std::call_once / mutex.
++// static std::once_flag library_load_flag;
+ 
+ static void ensure_library_loaded() {
+-    std::call_once(library_load_flag, &load);
++    // std::call_once(library_load_flag, &load);
++    if (library.is_empty()) {
++        load();
++    }
+ }
+ 
+ void load() {
+-    if (getenv("COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY")) {
+-        std::cout << "CoolProp: superancillaries have been disabled because the COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY environment variable has "
+-                     "been defined"
+-                  << '\n';
++    // N2O-only: inflate the embedded zlib payload, then parse JSON.
++    std::vector<unsigned char> out(NitrousOxide_JSON_raw_len);
++    mz_ulong out_len = NitrousOxide_JSON_raw_len;
++    const int zerr = mz_uncompress(out.data(), &out_len, NitrousOxide_JSON_z, NitrousOxide_JSON_z_len);
++    if (zerr != MZ_OK || out_len != NitrousOxide_JSON_raw_len) {
++        throw ValueError("Failed to decompress embedded NitrousOxide JSON");
+     }
+-    // Let a CBOR-decode failure propagate (it did, as a parse error, before this
+-    // migration): under std::call_once a thrown load() leaves the once-flag unset
+-    // so the error surfaces and a later call can retry, rather than silently
+-    // leaving the global library empty.
+-    nlohmann::json dd = cpjson::from_cbor(gall_fluids_CBORData, gall_fluids_CBORSize);
+-    // add_many is likewise left to throw.  It used to be wrapped in a handler
+-    // that printed to stdout and returned, but add_many has no per-fluid try, so
+-    // one bad fluid aborted the loop and every fluid after it in load order
+-    // silently vanished -- the library came up truncated, with a stdout line as
+-    // the only signal and no error state anywhere. Users saw an arbitrary subset
+-    // of fluids reported as unknown.  The same data reaches add_fluids_as_JSON
+-    // through a path that has always thrown, so the two entry points used to
+-    // disagree about what a malformed fluid means.  This is shipped, CI-verified
+-    // data: a throw here means the build is broken, and failing loudly at first
+-    // use beats a silently partial library.
+-    //
+-    // The retry story differs from the from_cbor line above, which is why this
+-    // is not a bare call.  from_cbor leaves no state behind, so a rethrow is
+-    // simply retried.  add_many mutates the library in place and is NOT
+-    // transactional: a mid-array failure leaves every fluid before it
+-    // registered.  Since a thrown load() leaves the std::call_once flag unset,
+-    // the next library access re-runs load() -- which would meet its own
+-    // half-finished first attempt and throw "already in library" for fluid 0,
+-    // naming the wrong fluid and pointing at OVERWRITE_FLUIDS instead of the
+-    // real parse error.  Wrappers surface the most recent error, so that
+-    // misleading message is the one users would actually see.  Resetting first
+-    // makes every attempt report the same, true cause.
++    nlohmann::json one = nlohmann::json::parse(out.begin(), out.end());
++    nlohmann::json dd = nlohmann::json::array({one});
+     try {
+         library.add_many(dd);
+     } catch (...) {
+diff --git a/src/Backends/Helmholtz/Fluids/FluidLibrary.h b/src/Backends/Helmholtz/Fluids/FluidLibrary.h
+index b334081e..3c9d6064 100644
+--- a/src/Backends/Helmholtz/Fluids/FluidLibrary.h
++++ b/src/Backends/Helmholtz/Fluids/FluidLibrary.h
+@@ -3,7 +3,7 @@
+ #define FLUIDLIBRARY_H
+ 
+ #include "CoolProp/CoolPropFluid.h"
+-#include "CoolProp/expression/ExpressionBlock.h"
++// #include "CoolProp/expression/ExpressionBlock.h"  // N2O-only
+ 
+ #include "CoolProp/detail/json.h"
+ #include "FluidLibraryFactories.h"
+@@ -13,8 +13,8 @@ using std::shared_ptr;
+ #include <map>
+ #include <algorithm>
+ #include "CoolProp/Configuration.h"
+-#include "Backends/Cubics/CubicsLibrary.h"
+-#include "Backends/Cubics/GeneralizedCubic.h"
++// #include "Backends/Cubics/CubicsLibrary.h"  // N2O-only
++// #include "Backends/Cubics/GeneralizedCubic.h"
+ #include "CoolProp/fluids/Helmholtz.h"
+ 
+ namespace CoolProp {
+@@ -428,9 +428,9 @@ class JSONFluidLibrary
+         EOS.ptriple = cpjson::get_double(satminL_state, "p");
+         EOS.Ttriple = EOS.limits.Tmin;
+ 
+-        // BibTex keys
+-        EOS.BibTeX_EOS = cpjson::get_string(EOS_json, "BibTeX_EOS");
+-        EOS.BibTeX_CP0 = cpjson::get_string(EOS_json, "BibTeX_CP0");
++        // BibTex keys (optional on embedded N2O builds that strip literature metadata)
++        EOS.BibTeX_EOS = EOS_json.contains("BibTeX_EOS") ? cpjson::get_string(EOS_json, "BibTeX_EOS") : "";
++        EOS.BibTeX_CP0 = EOS_json.contains("BibTeX_CP0") ? cpjson::get_string(EOS_json, "BibTeX_CP0") : "";
+ 
+         if (EOS_json.contains("SUPERANCILLARY")) {
+             if (getenv("COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY")) {
+@@ -505,11 +505,9 @@ class JSONFluidLibrary
+     // The dump() round-trip is what keeps that single definition text-based (and so
+     // nlohmann-free in the wrapper TUs); it runs once per expression block at fluid
+     // load, and nlohmann round-trips doubles exactly.
+-    static inline CoolProp::ExpressionData parse_expression_block(const nlohmann::json& j, const std::string& fluidname) {
+-        CoolProp::expression::Program prog = CoolProp::expression::compile_block(j.dump(), "fluid " + fluidname);
+-        CoolProp::ExpressionData data;
+-        data.correlation = std::make_shared<CoolProp::expression::ExpressionCorrelation>(std::move(prog));
+-        return data;
++    static inline CoolProp::ExpressionData parse_expression_block(const nlohmann::json& /*j*/, const std::string& /*fluidname*/) {
++        // N2O has no TRANSPORT expression blocks; keep a throw if ever hit.
++        throw ValueError("expression transport correlations disabled in N2O-only embedded build");
+     }
+ 
+     /// Parse the transport properties
+@@ -1327,95 +1325,9 @@ class JSONFluidLibrary
+         if (it != string_to_index_map.end()) {
+             return get(it->second);
+         } else {
+-            // Here we check for the use of a cubic Helmholtz energy transformation for a multi-fluid model
+-            std::vector<std::string> endings;
+-            endings.emplace_back("-SRK");
+-            endings.emplace_back("-PengRobinson");
+-            for (const auto& ending : endings) {
+-                if (endswith(key, ending)) {
+-                    std::string used_name = key.substr(0, key.size() - ending.size());
+-                    it = string_to_index_map.find(used_name);
+-                    if (it != string_to_index_map.end()) {
+-                        // We found the name of the fluid within the library of multiparameter
+-                        // Helmholtz-explicit models.  We will load its parameters from the
+-                        // multiparameter EOS
+-                        //
+-                        CoolPropFluid fluid = get(it->second);
+-                        // Remove all the residual contributions to the Helmholtz energy
+-                        fluid.EOSVector[0].alphar.empty_the_EOS();
+-                        // Get the parameters for the cubic EOS
+-                        CoolPropDbl Tc = fluid.EOSVector[0].reduce.T;
+-                        CoolPropDbl pc = fluid.EOSVector[0].reduce.p;
+-                        CoolPropDbl rhomolarc = fluid.EOSVector[0].reduce.rhomolar;
+-                        CoolPropDbl acentric = fluid.EOSVector[0].acentric;
+-                        CoolPropDbl R = 8.3144598;  // fluid.EOSVector[0].R_u;
+-                        // Set the cubic contribution to the residual Helmholtz energy
+-                        shared_ptr<AbstractCubic> ac;
+-                        if (ending == "-SRK") {
+-                            ac = std::make_shared<SRK>(Tc, pc, acentric, R);
+-                        } else if (ending == "-PengRobinson") {
+-                            ac = std::make_shared<PengRobinson>(Tc, pc, acentric, R);
+-                        } else {
+-                            throw CoolProp::ValueError(format("Unable to match this ending [%s]", ending.c_str()));
+-                        }
+-                        ac->set_Tr(Tc);
+-                        ac->set_rhor(rhomolarc);
+-                        fluid.EOSVector[0].alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
+-                        return fluid;
+-                    } else {
+-                        // Let's look in the library of cubic EOS
+-                        CubicLibrary::CubicsValues vals = CubicLibrary::get_cubic_values(used_name);
+-                        // Set the cubic contribution to the residual Helmholtz energy
+-                        shared_ptr<AbstractCubic> ac;
+-                        if (ending == "-SRK") {
+-                            ac = std::make_shared<SRK>(vals.Tc, vals.pc, vals.acentric, get_config_double(R_U_CODATA));
+-                        } else if (ending == "-PengRobinson") {
+-                            ac = std::make_shared<PengRobinson>(vals.Tc, vals.pc, vals.acentric, get_config_double(R_U_CODATA));
+-                        } else {
+-                            throw CoolProp::ValueError(format("Unable to match this ending [%s]", ending.c_str()));
+-                        }
+-                        ac->set_Tr(vals.Tc);
+-                        if (vals.rhomolarc > 0) {
+-                            ac->set_rhor(vals.rhomolarc);
+-                        } else {
+-                            // Curve fit from all the pure fluids in CoolProp (thanks to recommendation of A. Kazakov)
+-                            double v_c_Lmol = 2.14107171795 * (vals.Tc / vals.pc * 1000) + 0.00773144012514;  // [L/mol]
+-                            ac->set_rhor(1 / (v_c_Lmol / 1000.0));
+-                        }
+-                        // alpha_coeffs has exactly 3 entries for these types; the cubic schema enforces it
+-                        if (vals.alpha_type == "Twu") {
+-                            std::vector<double>& c = vals.alpha_coeffs;
+-                            ac->set_C_Twu(0, c[0], c[1], c[2]);
+-                        } else if (vals.alpha_type == "Mathias-Copeman" || vals.alpha_type == "MathiasCopeman") {
+-                            std::vector<double>& c = vals.alpha_coeffs;
+-                            ac->set_C_MC(0, c[0], c[1], c[2]);
+-                        }
+-                        CoolPropFluid fluid;
+-                        fluid.CAS = vals.CAS;
+-                        EquationOfState E;
+-                        // Populate the scalars this branch needs; without molar_mass
+-                        // every mass-basis query on the fluid is silently wrong,
+-                        // because it feeds all of mass_to_molar_inputs.
+-                        E.molar_mass = vals.molemass;
+-                        E.acentric = vals.acentric;
+-                        // Same R the cubic above was built with; R_u defaults to 0, which
+-                        // zeroed p and every other R-scaled property on this path
+-                        E.R_u = get_config_double(R_U_CODATA);
+-                        E.sat_min_liquid.T = _HUGE;
+-                        E.sat_min_liquid.p = _HUGE;
+-                        E.reduce.T = vals.Tc;
+-                        E.reduce.p = vals.pc;
+-                        E.reduce.rhomolar = ac->get_rhor();
+-                        fluid.EOSVector.push_back(E);
+-                        fluid.EOS().alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
+-                        fluid.EOS().alpha0 = vals.alpha0;
+-                        fluid.crit.T = vals.Tc;
+-                        fluid.crit.p = vals.pc;
+-                        fluid.crit.rhomolar = ac->get_rhor();
+-
+-                        return fluid;
+-                    }
+-                }
++            // N2O-only: cubic Helmholtz transforms (-SRK / -PengRobinson) disabled.
++            if (endswith(key, "-SRK") || endswith(key, "-PengRobinson")) {
++                throw ValueError("cubic fluid transforms disabled in N2O-only embedded build");
+             }
+             throw ValueError(format("key [%s] was not found in string_to_index_map in JSONFluidLibrary", key.c_str()));
+         }
+diff --git a/src/Backends/Helmholtz/HelmholtzEOSMixtureBackend.cpp b/src/Backends/Helmholtz/HelmholtzEOSMixtureBackend.cpp
+index 56b800bc..4e4c5628 100644
+--- a/src/Backends/Helmholtz/HelmholtzEOSMixtureBackend.cpp
++++ b/src/Backends/Helmholtz/HelmholtzEOSMixtureBackend.cpp
+@@ -26,25 +26,25 @@
+ #include "HelmholtzEOSMixtureBackend.h"
+ #include "HelmholtzEOSBackend.h"
+ #include "Fluids/FluidLibrary.h"
+-#include "Backends/Cubics/GeneralizedCubic.h"
++// #include "Backends/Cubics/GeneralizedCubic.h"  // N2O-only: cubic EOS swap disabled
+ #include "CoolProp/numerics/Solvers.h"
+ #include "CoolProp/numerics/MatrixMath.h"
+ #include "boost/math/tools/toms748_solve.hpp"
+ #include "VLERoutines.h"
+ #include "FlashRoutines.h"
+-#include "TransportRoutines.h"
++// #include "TransportRoutines.h"  // N2O-only: transport stubs below
+ #include "MixtureDerivatives.h"
+ #include "PhaseEnvelopeRoutines.h"
+ #include "ReducingFunctions.h"
+ #include "MixtureParameters.h"
+-#include "CoolProp/fluids/IdealCurves.h"
++// #include "CoolProp/fluids/IdealCurves.h"  // N2O-only
+ #include "MixtureParameters.h"
+-#include "CoolProp/expression/ExpressionCorrelation.h"
++// #include "CoolProp/expression/ExpressionCorrelation.h"
+ #include "ChebDensitySolver.h"
+ #include <atomic>
+ #include <cstdlib>
+ #include <map>
+-#include <mutex>
++// #include <mutex>
+ #include <random>
+ #include <sstream>
+ 
+@@ -524,64 +524,15 @@ void HelmholtzEOSMixtureBackend::set_binary_interaction_string(const std::size_t
+     }
+ };
+ 
+-void HelmholtzEOSMixtureBackend::calc_change_EOS(const std::size_t i, const std::string& EOS_name) {
+-    cheb_density_resolved = false;  // a different EOS: resolve the Chebyshev solver again
+-
+-    if (i < components.size()) {
+-        CoolPropFluid& fluid = components[i];
+-        EquationOfState& EOS = fluid.EOSVector[0];
+-
+-        if (EOS_name == "SRK" || EOS_name == "Peng-Robinson") {
+-
+-            // Get the parameters for the cubic EOS
+-            CoolPropDbl Tc = EOS.reduce.T;
+-            CoolPropDbl pc = EOS.reduce.p;
+-            CoolPropDbl rhomolarc = EOS.reduce.rhomolar;
+-            CoolPropDbl acentric = EOS.acentric;
+-            CoolPropDbl R = 8.3144598;
+-
+-            // Remove the residual part
+-            EOS.alphar.empty_the_EOS();
+-            // Set the contribution
+-            shared_ptr<AbstractCubic> ac;
+-            if (EOS_name == "SRK") {
+-                ac = std::make_shared<SRK>(Tc, pc, acentric, R);
+-            } else {
+-                ac = std::make_shared<PengRobinson>(Tc, pc, acentric, R);
+-            }
+-            ac->set_Tr(Tc);
+-            ac->set_rhor(rhomolarc);
+-            EOS.alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
+-        } else if (EOS_name == "XiangDeiters") {
+-
+-            // Get the parameters for the EOS
+-            CoolPropDbl Tc = EOS.reduce.T;
+-            CoolPropDbl pc = EOS.reduce.p;
+-            CoolPropDbl rhomolarc = EOS.reduce.rhomolar;
+-            CoolPropDbl acentric = EOS.acentric;
+-            CoolPropDbl R = 8.3144598;
+-
+-            // Remove the residual part
+-            EOS.alphar.empty_the_EOS();
+-            // Set the Xiang & Deiters contribution
+-            EOS.alphar.XiangDeiters = ResidualHelmholtzXiangDeiters(Tc, pc, rhomolarc, acentric, R);
+-        } else {
+-            throw ValueError(format("EOS name [%s] is invalid; valid options are SRK, Peng-Robinson, XiangDeiters", EOS_name.c_str()));
+-        }
+-    } else {
+-        throw ValueError(format("Index [%d] is invalid", i));
+-    }
+-    // Now do the same thing to the saturated liquid and vapor instances if possible
+-    if (this->SatL) SatL->change_EOS(i, EOS_name);
+-    if (this->SatV) SatV->change_EOS(i, EOS_name);
+-}
+-void HelmholtzEOSMixtureBackend::calc_phase_envelope(const std::string& type) {
+-    // Clear the phase envelope data
+-    PhaseEnvelope = PhaseEnvelopeData();
+-    // Build the phase envelope
+-    PhaseEnvelopeRoutines::build(*this, type);
+-    // Finalize the phase envelope
+-    PhaseEnvelopeRoutines::finalize(*this);
++void HelmholtzEOSMixtureBackend::calc_change_EOS(const std::size_t /*i*/, const std::string& /*EOS_name*/) {
++    throw NotImplementedError("calc_change_EOS disabled in N2O-only embedded build");
++}
++void HelmholtzEOSMixtureBackend::calc_phase_envelope(const std::string& /*type*/) {
++    // N2O-only: phase envelope construction disabled (saves flash).
++    throw NotImplementedError("phase envelope disabled in N2O-only embedded build");
++    // PhaseEnvelope = PhaseEnvelopeData();
++    // PhaseEnvelopeRoutines::build(*this, type);
++    // PhaseEnvelopeRoutines::finalize(*this);
+ };
+ void HelmholtzEOSMixtureBackend::set_mixture_parameters() {
+     // Build the matrix of binary-pair reducing functions
+@@ -757,454 +708,33 @@ CoolPropDbl HelmholtzEOSMixtureBackend::calc_surface_tension() {
+     }
+ }
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_dilute() {
+-    if (is_pure_or_pseudopure) {
+-        CoolPropDbl eta_dilute = NAN;
+-        switch (components[0].transport.viscosity_dilute.type) {
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_KINETIC_THEORY:
+-                eta_dilute = TransportRoutines::viscosity_dilute_kinetic_theory(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_COLLISION_INTEGRAL:
+-                eta_dilute = TransportRoutines::viscosity_dilute_collision_integral(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_POWERS_OF_T:
+-                eta_dilute = TransportRoutines::viscosity_dilute_powers_of_T(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_POWERS_OF_TR:
+-                eta_dilute = TransportRoutines::viscosity_dilute_powers_of_Tr(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_COLLISION_INTEGRAL_POWERS_OF_TSTAR:
+-                eta_dilute = TransportRoutines::viscosity_dilute_collision_integral_powers_of_T(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_ETHANE:
+-                eta_dilute = TransportRoutines::viscosity_dilute_ethane(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_CYCLOHEXANE:
+-                eta_dilute = TransportRoutines::viscosity_dilute_cyclohexane(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_CO2_LAESECKE_JPCRD_2017:
+-                eta_dilute = TransportRoutines::viscosity_dilute_CO2_LaeseckeJPCRD2017(*this);
+-                break;
+-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_EXPRESSION:
+-                if (!components[0].transport.viscosity_dilute.expression_data.correlation)
+-                    throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
+-                eta_dilute = components[0].transport.viscosity_dilute.expression_data.correlation->eval(*this);
+-                break;
+-            default:
+-                throw ValueError(
+-                  format("dilute viscosity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
+-        }
+-        return eta_dilute;
+-    } else {
+-        throw NotImplementedError(format("dilute viscosity not implemented for mixtures"));
+-    }
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background() {
+-    CoolPropDbl eta_dilute = calc_viscosity_dilute(), initial_density = 0, residual = 0;
+-    return calc_viscosity_background(eta_dilute, initial_density, residual);
+-}
+-CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background(CoolPropDbl eta_dilute, CoolPropDbl& initial_density, CoolPropDbl& residual) {
+-
+-    switch (components[0].transport.viscosity_initial.type) {
+-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_RAINWATER_FRIEND: {
+-            CoolPropDbl B_eta_initial = TransportRoutines::viscosity_initial_density_dependence_Rainwater_Friend(*this);
+-            CoolPropDbl rho = rhomolar();
+-            initial_density = eta_dilute * B_eta_initial * rho;  //TODO: Check units once AMTG
+-            break;
+-        }
+-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_EMPIRICAL: {
+-            initial_density = TransportRoutines::viscosity_initial_density_dependence_empirical(*this);
+-            break;
+-        }
+-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_EXPRESSION: {
+-            // The formula yields this stage's contribution directly, in Pa-s -- the
+-            // same convention as the EMPIRICAL form and as the other four stages.
+-            // It is NOT the Rainwater-Friend B_eta, which the host would have to
+-            // scale by eta_dilute*rho; the dilute viscosity is a within-correlation
+-            // intermediate and is deliberately not exposed to the DSL.
+-            if (!components[0].transport.viscosity_initial.expression_data.correlation)
+-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
+-            initial_density = components[0].transport.viscosity_initial.expression_data.correlation->eval(*this);
+-            break;
+-        }
+-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_NOT_SET: {
+-            break;
+-        }
+-    }
+-
+-    // Higher order terms
+-    switch (components[0].transport.viscosity_higher_order.type) {
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_BATSCHINKI_HILDEBRAND:
+-            residual = TransportRoutines::viscosity_higher_order_modified_Batschinski_Hildebrand(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_FRICTION_THEORY:
+-            residual = TransportRoutines::viscosity_higher_order_friction_theory(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HYDROGEN:
+-            residual = TransportRoutines::viscosity_hydrogen_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_TOLUENE:
+-            residual = TransportRoutines::viscosity_toluene_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HEXANE:
+-            residual = TransportRoutines::viscosity_hexane_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HEPTANE:
+-            residual = TransportRoutines::viscosity_heptane_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_ETHANE:
+-            residual = TransportRoutines::viscosity_ethane_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_BENZENE:
+-            residual = TransportRoutines::viscosity_benzene_higher_order_hardcoded(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_CO2_LAESECKE_JPCRD_2017:
+-            residual = TransportRoutines::viscosity_CO2_higher_order_hardcoded_LaeseckeJPCRD2017(*this);
+-            break;
+-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_EXPRESSION:
+-            if (!components[0].transport.viscosity_higher_order.expression_data.correlation)
+-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
+-            residual = components[0].transport.viscosity_higher_order.expression_data.correlation->eval(*this);
+-            break;
+-        default:
+-            throw ValueError(
+-              format("higher order viscosity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
+-    }
+-
+-    return initial_density + residual;
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+-
+-/// Transport properties are only defined for a single phase.  Inside the two-phase
+-/// region the saturated liquid and vapor have different values and there is no
+-/// meaningful bulk value, so refuse rather than evaluate a single-phase correlation
+-/// at the overall density (#3446).  Q = 0 and Q = 1 are the saturated phases.  The
+-/// tolerance matches the 1e-9 band in which the pure-fluid flashes already label a
+-/// state two-phase, so a state on the saturation curve to within roundoff passes.
+-/// Written so that a NaN quality throws.  A metastable value can still be had by
+-/// imposing the phase with specify_phase().
+-static void check_transport_property_defined(HelmholtzEOSMixtureBackend& HEOS, const char* property) {
+-    const double Q_tol = 1e-9, Q = HEOS.Q();
+-    if (HEOS.phase() == iphase_twophase && !(Q <= Q_tol || Q >= 1 - Q_tol)) {
+-        throw ValueError(
+-          format("%s is not defined for two-phase states (Q = %g); evaluate the saturated liquid (Q = 0) or vapor (Q = 1) instead", property, Q));
+-    }
++CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background(CoolPropDbl /*eta_dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/) {
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+-
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity() {
+-    check_transport_property_defined(*this, "Viscosity");
+-    if (is_pure_or_pseudopure) {
+-        CoolPropDbl dilute = 0, initial_density = 0, residual = 0, critical = 0;
+-        calc_viscosity_contributions(dilute, initial_density, residual, critical);
+-        return dilute + initial_density + residual + critical;
+-    } else {
+-        set_warning_string("Mixture model for viscosity is highly approximate");
+-        CoolPropDbl summer = 0;
+-        for (std::size_t i = 0; i < mole_fractions.size(); ++i) {
+-            shared_ptr<HelmholtzEOSBackend> HEOS = std::make_shared<HelmholtzEOSBackend>(components[i]);
+-            HEOS->update(DmolarT_INPUTS, _rhomolar, _T);
+-            // The mixture's (T, rho) may fall inside the pure component's dome.  Relabel
+-            // the phase so the two-phase check lets the correlation be evaluated there
+-            // regardless (#3446).  Relabel after the update rather than imposing it before:
+-            // a re-flash with an imposed phase would replace psat in p() by the EOS pressure,
+-            // which the friction-theory viscosity models read.
+-            HEOS->specify_phase(iphase_gas);
+-            summer += mole_fractions[i] * log(HEOS->viscosity());
+-        }
+-        return exp(summer);
+-    }
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+-void HelmholtzEOSMixtureBackend::calc_viscosity_contributions(CoolPropDbl& dilute, CoolPropDbl& initial_density, CoolPropDbl& residual,
+-                                                              CoolPropDbl& critical) {
+-    check_transport_property_defined(*this, "Viscosity");
+-    if (is_pure_or_pseudopure) {
+-        // Reset the variables
+-        dilute = 0;
+-        initial_density = 0;
+-        residual = 0;
+-        critical = 0;
+-
+-        // Get a reference for code cleanness
+-        CoolPropFluid& component = components[0];
+-
+-        if (!component.transport.viscosity_model_provided) {
+-            throw ValueError(format("Viscosity model is not available for this fluid"));
+-        }
+-
+-        // Check if using ECS
+-        if (component.transport.viscosity_using_ECS) {
+-            // Build the reference fluid once and cache it — viscosity_ECS resets
+-            // its state on every call (conformal_state_solver + update_DmolarT_direct),
+-            // so reusing the backend is safe and avoids deep-copying the entire
+-            // reference-fluid EOS on every viscosity evaluation.
+-            if (!viscosity_ecs_reference_state) {
+-                std::string fluid_name = component.transport.viscosity_ecs.reference_fluid;
+-                std::vector<std::string> names(1, fluid_name);
+-                viscosity_ecs_reference_state = std::make_shared<HelmholtzEOSMixtureBackend>(names);
+-            }
+-            // Get the viscosity using ECS and stick in the critical value
+-            critical = TransportRoutines::viscosity_ECS(*this, *viscosity_ecs_reference_state);
+-            return;
+-        }
+-
+-        // Check if using Chung model
+-        if (component.transport.viscosity_using_Chung) {
+-            // Get the viscosity using ECS and stick in the critical value
+-            critical = TransportRoutines::viscosity_Chung(*this);
+-            return;
+-        }
+-
+-        // Check if using rho*sr model
+-        if (component.transport.viscosity_using_rhosr) {
+-            // Get the viscosity using rho*sr model and stick in the critical value
+-            critical = TransportRoutines::viscosity_rhosr(*this);
+-            return;
+-        }
+-
+-        if (component.transport.hardcoded_viscosity != CoolProp::TransportPropertyData::VISCOSITY_NOT_HARDCODED) {
+-            // Evaluate hardcoded model and stick in the critical value
+-            switch (component.transport.hardcoded_viscosity) {
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_WATER:
+-                    critical = TransportRoutines::viscosity_water_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HEAVYWATER:
+-                    critical = TransportRoutines::viscosity_heavywater_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HEAVYWATER_IAPWS2020:
+-                    critical = TransportRoutines::viscosity_heavywater_IAPWS2020_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HELIUM:
+-                    critical = TransportRoutines::viscosity_helium_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_R23:
+-                    critical = TransportRoutines::viscosity_R23_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_METHANOL:
+-                    critical = TransportRoutines::viscosity_methanol_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_M_XYLENE:
+-                    critical = TransportRoutines::viscosity_m_xylene_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_O_XYLENE:
+-                    critical = TransportRoutines::viscosity_o_xylene_hardcoded(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_P_XYLENE:
+-                    critical = TransportRoutines::viscosity_p_xylene_hardcoded(*this);
+-                    break;
+-                default:
+-                    throw ValueError(
+-                      format("hardcoded viscosity type [%d] is invalid for fluid %s", component.transport.hardcoded_viscosity, name().c_str()));
+-            }
+-            return;
+-        }
+-
+-        // -------------------------
+-        //     Normal evaluation
+-        // -------------------------
+-
+-        // Dilute part
+-        dilute = calc_viscosity_dilute();
+-
+-        // Background viscosity given by the sum of the initial density dependence and higher order terms
+-        calc_viscosity_background(dilute, initial_density, residual);
+-
+-        // Critical part (no fluids have critical enhancement for viscosity currently)
+-        critical = 0;
+-    } else {
+-        throw ValueError("calc_viscosity_contributions invalid for mixtures");
+-    }
++void HelmholtzEOSMixtureBackend::calc_viscosity_contributions(CoolPropDbl& /*dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/,
++                                                              CoolPropDbl& /*critical*/) {
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
++}
++void HelmholtzEOSMixtureBackend::calc_conductivity_contributions(CoolPropDbl& /*dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/,
++                                                                 CoolPropDbl& /*critical*/) {
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+-void HelmholtzEOSMixtureBackend::calc_conductivity_contributions(CoolPropDbl& dilute, CoolPropDbl& initial_density, CoolPropDbl& residual,
+-                                                                 CoolPropDbl& critical) {
+-    check_transport_property_defined(*this, "Thermal conductivity");
+-    if (is_pure_or_pseudopure) {
+-        // Reset the variables
+-        dilute = 0;
+-        initial_density = 0;
+-        residual = 0;
+-        critical = 0;
+-
+-        // Get a reference for code cleanness
+-        CoolPropFluid& component = components[0];
+-
+-        if (!component.transport.conductivity_model_provided) {
+-            throw ValueError(format("Thermal conductivity model is not available for this fluid"));
+-        }
+-
+-        // Check if using ECS
+-        if (component.transport.conductivity_using_ECS) {
+-            // Build the reference fluid once and cache it — conductivity_ECS resets
+-            // its state on every call, so reusing the backend is safe and avoids
+-            // deep-copying the entire reference-fluid EOS on every conductivity
+-            // evaluation (the dominant cost of SVDSBTL surface builds for ECS fluids).
+-            if (!conductivity_ecs_reference_state) {
+-                std::string fluid_name = component.transport.conductivity_ecs.reference_fluid;
+-                std::vector<std::string> name(1, fluid_name);
+-                conductivity_ecs_reference_state = std::make_shared<HelmholtzEOSMixtureBackend>(name);
+-            }
+-            // Get the conductivity using ECS and store in initial_density (not normally used);
+-            initial_density = TransportRoutines::conductivity_ECS(*this, *conductivity_ecs_reference_state);  // Warning: not actually initial_density
+-            return;
+-        }
+-
+-        if (component.transport.hardcoded_conductivity != CoolProp::TransportPropertyData::CONDUCTIVITY_NOT_HARDCODED) {
+-            // Evaluate hardcoded model and deposit in initial_density variable
+-            // Warning: not actually initial_density
+-            switch (component.transport.hardcoded_conductivity) {
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_WATER:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_water(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HEAVYWATER:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_heavywater(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HEAVYWATER_IAPWS2021:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_heavywater_IAPWS2021(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_R23:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_R23(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HELIUM:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_helium(*this);
+-                    break;
+-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_METHANE:
+-                    initial_density = TransportRoutines::conductivity_hardcoded_methane(*this);
+-                    break;
+-                default:
+-                    throw ValueError(format("hardcoded conductivity type [%d] is invalid for fluid %s",
+-                                            components[0].transport.hardcoded_conductivity, name().c_str()));
+-            }
+-            return;
+-        }
+-
+-        // -------------------------
+-        //     Normal evaluation
+-        // -------------------------
+-
+-        // Dilute part
+-        switch (component.transport.conductivity_dilute.type) {
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_RATIO_POLYNOMIALS:
+-                dilute = TransportRoutines::conductivity_dilute_ratio_polynomials(*this);
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_ETA0_AND_POLY:
+-                dilute = TransportRoutines::conductivity_dilute_eta0_and_poly(*this);
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_CO2:
+-                dilute = TransportRoutines::conductivity_dilute_hardcoded_CO2(*this);
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_CO2_HUBER_JPCRD_2016:
+-                dilute = TransportRoutines::conductivity_dilute_hardcoded_CO2_HuberJPCRD2016(*this);
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_ETHANE:
+-                dilute = TransportRoutines::conductivity_dilute_hardcoded_ethane(*this);
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_NONE:
+-                dilute = 0.0;
+-                break;
+-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_EXPRESSION:
+-                if (!components[0].transport.conductivity_dilute.expression_data.correlation)
+-                    throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
+-                dilute = components[0].transport.conductivity_dilute.expression_data.correlation->eval(*this);
+-                break;
+-            default:
+-                throw ValueError(
+-                  format("dilute conductivity type [%d] is invalid for fluid %s", components[0].transport.conductivity_dilute.type, name().c_str()));
+-        }
+-
+-        // Residual part
+-        residual = calc_conductivity_background();
+-
+-        // Critical part
+-        switch (component.transport.conductivity_critical.type) {
+-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_SIMPLIFIED_OLCHOWY_SENGERS:
+-                critical = TransportRoutines::conductivity_critical_simplified_Olchowy_Sengers(*this);
+-                break;
+-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_R123:
+-                critical = TransportRoutines::conductivity_critical_hardcoded_R123(*this);
+-                break;
+-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_AMMONIA:
+-                critical = TransportRoutines::conductivity_critical_hardcoded_ammonia(*this);
+-                break;
+-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_NONE:
+-                critical = 0.0;
+-                break;
+-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_CARBONDIOXIDE_SCALABRIN_JPCRD_2006:
+-                critical = TransportRoutines::conductivity_critical_hardcoded_CO2_ScalabrinJPCRD2006(*this);
+-                break;
+-            default:
+-                throw ValueError(
+-                  format("critical conductivity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
+-        }
+-    } else {
+-        throw ValueError("calc_conductivity_contributions invalid for mixtures");
+-    }
+-};
+-
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_conductivity_background() {
+-    // Residual part
+-    CoolPropDbl lambda_residual = _HUGE;
+-    switch (components[0].transport.conductivity_residual.type) {
+-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_POLYNOMIAL:
+-            lambda_residual = TransportRoutines::conductivity_residual_polynomial(*this);
+-            break;
+-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_POLYNOMIAL_AND_EXPONENTIAL:
+-            lambda_residual = TransportRoutines::conductivity_residual_polynomial_and_exponential(*this);
+-            break;
+-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_EXPRESSION:
+-            if (!components[0].transport.conductivity_residual.expression_data.correlation)
+-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
+-            lambda_residual = components[0].transport.conductivity_residual.expression_data.correlation->eval(*this);
+-            break;
+-        default:
+-            throw ValueError(
+-              format("residual conductivity type [%d] is invalid for fluid %s", components[0].transport.conductivity_residual.type, name().c_str()));
+-    }
+-    return lambda_residual;
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_conductivity() {
+-    check_transport_property_defined(*this, "Thermal conductivity");
+-    if (is_pure_or_pseudopure) {
+-        CoolPropDbl dilute = 0, initial_density = 0, residual = 0, critical = 0;
+-        calc_conductivity_contributions(dilute, initial_density, residual, critical);
+-        return dilute + initial_density + residual + critical;
+-    } else {
+-        set_warning_string("Mixture model for conductivity is highly approximate");
+-        CoolPropDbl summer = 0;
+-        for (std::size_t i = 0; i < mole_fractions.size(); ++i) {
+-            shared_ptr<HelmholtzEOSBackend> HEOS = std::make_shared<HelmholtzEOSBackend>(components[i]);
+-            HEOS->update(DmolarT_INPUTS, _rhomolar, _T);
+-            // The mixture's (T, rho) may fall inside the pure component's dome.  Relabel
+-            // the phase so the two-phase check lets the correlation be evaluated there
+-            // regardless (#3446).  Relabel after the update rather than imposing it before:
+-            // a re-flash with an imposed phase would replace psat in p() by the EOS pressure,
+-            // which the friction-theory viscosity models read.
+-            HEOS->specify_phase(iphase_gas);
+-            summer += mole_fractions[i] * HEOS->conductivity();
+-        }
+-        return summer;
+-    }
++    throw NotImplementedError("transport disabled in N2O-only embedded build");
+ }
+-void HelmholtzEOSMixtureBackend::calc_conformal_state(const std::string& reference_fluid, CoolPropDbl& T, CoolPropDbl& rhomolar) {
+-    // Construct as the derived HelmholtzEOSBackend, then implicit upcast
+-    // to the shared_ptr<HelmholtzEOSMixtureBackend> base. Single allocation;
+-    // virtual destructor on the base ensures correct cleanup.
+-    shared_ptr<CoolProp::HelmholtzEOSMixtureBackend> REF = std::make_shared<CoolProp::HelmholtzEOSBackend>(reference_fluid);
+-
+-    if (T < 0 && rhomolar < 0) {
+-        // Collect some parameters
+-        CoolPropDbl Tc = T_critical(), Tc0 = REF->T_critical(), rhocmolar = rhomolar_critical(), rhocmolar0 = REF->rhomolar_critical();
+-
+-        // Starting guess values for shape factors
+-        CoolPropDbl theta = 1;
+-        CoolPropDbl phi = 1;
+-
+-        // The equivalent substance reducing ratios
+-        CoolPropDbl f = Tc / Tc0 * theta;
+-        CoolPropDbl h = rhocmolar0 / rhocmolar * phi;  // Must be the ratio of MOLAR densities!!
+-
+-        // Starting guesses for conformal state
+-        T = this->T() / f;
+-        rhomolar = this->rhomolar() * h;
+-    }
+-
+-    TransportRoutines::conformal_state_solver(*this, *REF, T, rhomolar);
++void HelmholtzEOSMixtureBackend::calc_conformal_state(const std::string& /*reference_fluid*/, CoolPropDbl& /*T*/, CoolPropDbl& /*rhomolar*/) {
++    throw NotImplementedError("conformal state / ECS transport disabled in N2O-only embedded build");
+ }
+ CoolPropDbl HelmholtzEOSMixtureBackend::calc_Ttriple() {
+     double summer = 0;
+@@ -1239,22 +769,8 @@ CoolPropDbl HelmholtzEOSMixtureBackend::calc_saturated_vapor_keyed_output(parame
+     return SatV->keyed_output(key);
+ }
+ 
+-void HelmholtzEOSMixtureBackend::calc_ideal_curve(const std::string& type, std::vector<double>& T, std::vector<double>& p) {
+-    if (type == "Joule-Thomson") {
+-        JouleThomsonCurveTracer JTCT(this, 1e5, 800);
+-        JTCT.trace(T, p);
+-    } else if (type == "Joule-Inversion") {
+-        JouleInversionCurveTracer JICT(this, 1e5, 800);
+-        JICT.trace(T, p);
+-    } else if (type == "Ideal") {
+-        IdealCurveTracer ICT(this, 1e5, 800);
+-        ICT.trace(T, p);
+-    } else if (type == "Boyle") {
+-        BoyleCurveTracer BCT(this, 1e5, 800);
+-        BCT.trace(T, p);
+-    } else {
+-        throw ValueError(format("Invalid ideal curve type: %s", type.c_str()));
+-    }
++void HelmholtzEOSMixtureBackend::calc_ideal_curve(const std::string& /*type*/, std::vector<double>& /*T*/, std::vector<double>& /*p*/) {
++    throw NotImplementedError("ideal curves disabled in N2O-only embedded build");
+ };
+ std::vector<std::string> HelmholtzEOSMixtureBackend::calc_fluid_names() {
+     std::vector<std::string> out;
+@@ -3005,7 +2521,7 @@ struct ChebDensityEntry
+     double Tmin = 0;  ///< the tables cover T >= Tmin
+ };
+ namespace {
+-std::mutex cheb_cache_mtx;
++// std::mutex cheb_cache_mtx;
+ std::map<std::string, std::shared_ptr<const ChebDensityEntry>> cheb_cache;  // by model key, see cheb_model_key
+ 
+ // Key of the model the tables are built from: backend, components, gas-constant configuration, and a fingerprint of
+@@ -3055,14 +2571,22 @@ std::string cheb_model_key(HelmholtzEOSMixtureBackend& HEOS) {
+ }  // namespace
+ 
+ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb(CoolPropDbl T, CoolPropDbl p) {
+-    if (!get_config_bool(CHEBYSHEV_DENSITY_SOLVER)) return -1;
+-    try {
+-        return solver_rho_Tp_cheb_impl(T, p);
+-    } catch (...) {
+-        return -1;  // never fail the flash from here: the existing solvers answer instead
+-    }
+-}
+-CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, CoolPropDbl p) {
++    // N2O-only embedded: Chebyshev density solver disabled (uses thread_local / TLS).
++    (void)T;
++    (void)p;
++    return -1;
++    // if (!get_config_bool(CHEBYSHEV_DENSITY_SOLVER)) return -1;
++    // try {
++    //     return solver_rho_Tp_cheb_impl(T, p);
++    // } catch (...) {
++    //     return -1;
++    // }
++}
++CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl /*T*/, CoolPropDbl /*p*/) {
++    return -1;
++}
++#if 0
++CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl_DISABLED(CoolPropDbl T, CoolPropDbl p) {
+     // the gas-constant configuration is part of the model the tables were built for
+     const bool R_norm = get_config_bool(NORMALIZE_GAS_CONSTANTS);
+     const double R_u = get_config_double(R_U_CODATA);
+@@ -3080,7 +2604,7 @@ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, C
+         if (supported && mole_fractions.size() == components.size()) {
+             try {
+                 const std::string key = cheb_model_key(*this);
+-                std::scoped_lock lk(cheb_cache_mtx);
++                // std::scoped_lock lk(cheb_cache_mtx);
+                 const auto it = cheb_cache.find(key);
+                 if (it != cheb_cache.end()) {
+                     cheb_density = it->second;
+@@ -3137,6 +2661,7 @@ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, C
+     if (!cheb_density->tab->assemble(T, x, S)) return -1;
+     return cheb_density->tab->stable_root(S, p);
+ }
++#endif
+ 
+ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_global(CoolPropDbl T, CoolPropDbl p, CoolPropDbl rhomolar_max) {
+     {  // the Chebyshev all-roots solver, when enabled and able to answer
+diff --git a/src/Backends/Helmholtz/MeltingCaloric.cpp b/src/Backends/Helmholtz/MeltingCaloric.cpp
+index eccef967..48bfb13a 100644
+--- a/src/Backends/Helmholtz/MeltingCaloric.cpp
++++ b/src/Backends/Helmholtz/MeltingCaloric.cpp
+@@ -8,7 +8,7 @@
+ #include <cmath>
+ #include <functional>
+ #include <map>
+-#include <mutex>
++// #include <mutex>
+ #include <stdexcept>
+ #include <string>
+ #include <Eigen/Dense>
+@@ -247,9 +247,9 @@ void MeltingCaloric::build(HelmholtzEOSMixtureBackend& H) {
+ std::shared_ptr<MeltingCaloric> get_melting_caloric_cached(HelmholtzEOSMixtureBackend& H) {
+     if (!H.is_pure() || !H.has_melting_line()) return nullptr;
+     static std::map<std::string, std::shared_ptr<MeltingCaloric>> cache;
+-    static std::mutex mtx;
++    // static std::mutex mtx;
+     const std::string key = H.fluid_names()[0];  // pure fluid: single name
+-    std::scoped_lock lk(mtx);
++    // std::scoped_lock lk(mtx);
+     auto it = cache.find(key);
+     if (it != cache.end()) return it->second;
+     auto mc = std::make_shared<MeltingCaloric>();
+diff --git a/src/Backends/Helmholtz/MixtureParameters.cpp b/src/Backends/Helmholtz/MixtureParameters.cpp
+index 75e7e22a..cdcf31f8 100644
+--- a/src/Backends/Helmholtz/MixtureParameters.cpp
++++ b/src/Backends/Helmholtz/MixtureParameters.cpp
+@@ -1,905 +1,62 @@
++// N2O-only embedded build: stub out mixture BIP / departure / predefined-mixture
++// libraries. Pure-fluid HEOS only needs an empty Excess term and a
++// GERG2008ReducingFunction over a single component.
++
+ #include "MixtureParameters.h"
+-#include "CoolProp/detail/json.h"
++#include "ReducingFunctions.h"
++#include "ExcessHEFunction.h"
+ #include "CoolProp/detail/strings.h"
+-#include "mixture_departure_functions_JSON.h"  // Creates the variable mixture_departure_functions_JSON
+-#include "mixture_binary_pairs_JSON.h"         // Creates the variable mixture_binary_pairs_JSON
+-#include "predefined_mixtures_JSON.h"          // Makes a std::string variable called predefined_mixtures_JSON
+-
+-#include <mutex>
+ 
+ namespace CoolProp {
+ 
+-/** \brief A library of predefined mixtures
+- *
+- * Each entry in the predefined mixture library contains the names and mole fractions for the binary pairs
+- */
+-class PredefinedMixturesLibrary
+-{
+-   public:
+-    std::map<std::string, Dictionary> predefined_mixture_map;
+-
+-    PredefinedMixturesLibrary() {
+-        load_from_string(predefined_mixtures_JSON);
+-    }
+-
+-    void load_from_string(const std::string_view& str) {
+-        nlohmann::json doc = cpjson::parse(str);
+-        load_from_JSON(doc);
+-    }
+-
+-    void load_from_JSON(const nlohmann::json& doc) {
+-        if (!doc.is_array() || !doc[0].is_object()) {
+-            throw ValueError("You must provide an array of objects");
+-        }
+-        // Iterate over the papers in the listing
+-        for (const auto& el : doc) {
+-            // Instantiate the empty dictionary to be filled
+-            Dictionary dict;
+-            // Get the name
+-            std::string name = cpjson::get_string(el, "name") + ".mix";
+-            // Get the fluid names
+-            dict.add_string_vector("fluids", cpjson::get_string_array(el, "fluids"));
+-            // Get the mole fractions
+-            dict.add_double_vector("mole_fractions", cpjson::get_double_array(el, "mole_fractions"));
+-            // Add to the map
+-            predefined_mixture_map.emplace(name, dict);
+-            // Also add the uppercase version to the map
+-            predefined_mixture_map.emplace(upper(name), dict);
+-        }
+-    }
+-};
+-static PredefinedMixturesLibrary predefined_mixtures_library;
+-
+-std::string get_csv_predefined_mixtures() {
+-    std::vector<std::string> out;
+-    out.reserve(predefined_mixtures_library.predefined_mixture_map.size());
+-    for (const auto& [key, val] : predefined_mixtures_library.predefined_mixture_map) {
+-        out.push_back(key);
+-    }
+-    return strjoin(out, ",");
+-}
+-
+-bool is_predefined_mixture(const std::string& name, Dictionary& dict) {
+-    auto iter = predefined_mixtures_library.predefined_mixture_map.find(name);
+-    if (iter != predefined_mixtures_library.predefined_mixture_map.end()) {
+-        dict = iter->second;
+-        return true;
+-    } else {
+-        return false;
+-    }
+-}
+-
+-void set_predefined_mixtures(const std::string& string_data) {
+-    // JSON-encoded string for binary interaction parameters
+-    predefined_mixtures_library.load_from_string(string_data);
++std::string get_csv_mixture_binary_pairs() {
++    return "";
+ }
+ 
+-/** \brief A library of binary pair parameters for the mixture
+- *
+- * Each entry in the binary pair library includes reducing parameters as well as the name of the reducing function to be used and
+- */
+-class MixtureBinaryPairLibrary
+-{
+-   private:
+-    /// Map from sorted pair of CAS numbers to reducing parameter map.  The reducing parameter map is a map from key (string) to value (double)
+-    std::map<std::vector<std::string>, std::vector<Dictionary>> m_binary_pair_map;
+-    /// Guards single-threaded population of m_binary_pair_map. Without it,
+-    /// concurrent first calls to binary_pair_map() race in load_defaults()
+-    /// (gh-2787).
+-    std::once_flag m_load_flag;
+-
+-   public:
+-    std::map<std::vector<std::string>, std::vector<Dictionary>>& binary_pair_map() {
+-        load_defaults_if_needed();
+-        return m_binary_pair_map;
+-    };
+-
+-    void load_from_string(const std::string_view& str, bool allow_multiple_models = false) {
+-        nlohmann::json doc = cpjson::parse(str);
+-        load_from_JSON(doc, allow_multiple_models);
+-    }
+-
+-    void load_defaults_if_needed() {
+-        std::call_once(m_load_flag, [this] { load_defaults(); });
+-    }
+-
+-    // Load the defaults that come from the JSON-encoded string compiled into library
+-    // as the variable mixture_departure_functions_JSON
+-    void load_defaults() {
+-        // allow_multiple_models: the shipped library deliberately carries more than one published
+-        // model for a handful of pairs.  Data supplied at run time does not get that latitude.
+-        load_from_string(mixture_binary_pairs_JSON, true);
+-    }
+-
+-    /** \brief Construct the binary pair library including all the binary pairs that are possible
+-     *
+-     * The data structure also includes space for a string that gives the pointer to the departure function to be used for this binary pair.
+-     *
+-     * @param doc The JSON document holding the binary pair records
+-     * @param allow_multiple_models If true, a pair that appears more than once in \a doc keeps every
+-     * record, and the LAST one in document order is the model in force: later data supersedes
+-     * earlier.  The record in force is held at index 0, so the vector order is deliberately the
+-     * reverse of the document order.  If false (the default, and what run-time callers such as
+-     * set_interaction_parameters get), a repeated pair is an error unless the configuration key
+-     * OVERWRITE_BINARY_INTERACTION is set -- so that parameters supplied by a caller can never be
+-     * silently ignored.
+-     */
+-    void load_from_JSON(const nlohmann::json& doc, bool allow_multiple_models = false) {
+-
+-        if (!allow_multiple_models) {
+-            // Records arriving at run time have to be merged into the COMPLETE shipped library,
+-            // never into an empty map.  The shipped library loads lazily, and neither
+-            // set_interaction_parameters() nor the REFPROP HMX.BNC import triggers that load, so a
+-            // caller reaching one of them before their first property call would otherwise have
+-            // their records inserted as brand-new entries; the shipped records would then arrive
+-            // afterwards and, being later in document order, take precedence -- silently demoting
+-            // the caller's parameters to an unread alternate instead of rejecting them or honouring
+-            // OVERWRITE_BINARY_INTERACTION.  Guarded on allow_multiple_models so the shipped load
+-            // itself cannot re-enter std::call_once and deadlock.
+-            load_defaults_if_needed();
+-        }
+-
+-        // Iterate over the papers in the listing
+-        for (const auto& el : doc) {
+-            // Get the empty dictionary to be filled by the appropriate reducing parameter filling function
+-            Dictionary dict;
+-
+-            // Get the vector of CAS numbers
+-            std::vector<std::string> CAS;
+-            CAS.push_back(cpjson::get_string(el, "CAS1"));
+-            CAS.push_back(cpjson::get_string(el, "CAS2"));
+-            std::string name1 = cpjson::get_string(el, "Name1");
+-            std::string name2 = cpjson::get_string(el, "Name2");
+-
+-            // Sort the CAS number vector
+-            std::sort(CAS.begin(), CAS.end());
+-
+-            // A sort was carried out, names/CAS were swapped
+-            bool swapped = CAS[0].compare(cpjson::get_string(el, "CAS1")) != 0;
+-
+-            if (swapped) {
+-                std::swap(name1, name2);
+-            }
+-
+-            // Populate the dictionary with common terms
+-            dict.add_string("name1", name1);
+-            dict.add_string("name2", name2);
+-            dict.add_string("BibTeX", cpjson::get_string(el, "BibTeX"));
+-            dict.add_number("F", cpjson::get_double(el, "F"));
+-            if (std::abs(dict.get_number("F")) > DBL_EPSILON) {
+-                dict.add_string("function", cpjson::get_string(el, "function"));
+-            }
+-
+-            if (el.contains("xi") && el.contains("zeta")) {
+-                dict.add_string("type", "Lemmon-xi-zeta");
+-                // Air and HFC mixtures from Lemmon - we could also directly do the conversion
+-                dict.add_number("xi", cpjson::get_double(el, "xi"));
+-                dict.add_number("zeta", cpjson::get_double(el, "zeta"));
+-            } else if (el.contains("gammaT") && el.contains("gammaV") && el.contains("betaT") && el.contains("betaV")) {
+-                dict.add_string("type", "GERG-2008");
+-                dict.add_number("gammaV", cpjson::get_double(el, "gammaV"));
+-                dict.add_number("gammaT", cpjson::get_double(el, "gammaT"));
+-
+-                double betaV = cpjson::get_double(el, "betaV");
+-                double betaT = cpjson::get_double(el, "betaT");
+-                if (swapped) {
+-                    dict.add_number("betaV", 1 / betaV);
+-                    dict.add_number("betaT", 1 / betaT);
+-                } else {
+-                    dict.add_number("betaV", betaV);
+-                    dict.add_number("betaT", betaT);
+-                }
+-            } else {
+-                std::cout << "Loading error: binary pair of " << name1 << " & " << name2
+-                          << "does not provide either a) xi and zeta b) gammaT, gammaV, betaT, and betaV" << '\n';
+-                continue;
+-            }
+-
+-            auto it = m_binary_pair_map.find(CAS);
+-            if (it == m_binary_pair_map.end()) {
+-                // Add to binary pair map by creating one-element vector
+-                m_binary_pair_map.emplace(CAS, std::vector<Dictionary>(1, dict));
+-            } else {
+-                if (allow_multiple_models) {
+-                    // More than one model is published for this pair, so keep them all.  The LAST
+-                    // record for the pair in document order is the model in force: later data
+-                    // supersedes earlier, which is the direction OVERWRITE_BINARY_INTERACTION has
+-                    // always had -- the difference being that here the superseded record is kept
+-                    // rather than erased.  A newer correlation is therefore added by appending it
+-                    // after the one it replaces, and appending is the only edit needed.
+-                    //
+-                    // Every consumer of binary_pair_map() reads [0], so the record in force is held
+-                    // at the front: vector order is deliberately the REVERSE of document order.
+-                    // Nothing currently *reads* an alternate -- selecting a non-default model is
+-                    // deliberately not implemented here.
+-                    //
+-                    // This branch is tested BEFORE OVERWRITE_BINARY_INTERACTION, and that order is
+-                    // load-bearing.  The shipped library loads lazily behind a std::call_once, so a
+-                    // caller who sets that key before their first mixture call -- which is exactly
+-                    // what Web/fluid_properties/Mixtures.rst tells them to do -- would otherwise be
+-                    // in overwrite mode while the shipped records were still being read, and each
+-                    // record would erase the one before it instead of stacking on top of it.  With
+-                    // this layout that would still leave the correct model in force, so it is not
+-                    // observable through the API; it would silently discard the retained records,
+-                    // which is precisely what shipping them is for.
+-                    it->second.insert(it->second.begin(), dict);
+-                } else if (get_config_bool(OVERWRITE_BINARY_INTERACTION)) {
+-                    // Overwrite: the incoming record replaces everything previously known about
+-                    // this pair.  Applies to data supplied at run time only; this is the documented
+-                    // behaviour of set_interaction_parameters, see Web/fluid_properties/Mixtures.rst.
+-                    it->second = std::vector<Dictionary>(1, dict);
+-                } else {
+-                    // Error if already in map!  Reached only for data supplied at run time, where
+-                    // silently keeping the caller's record as an unread alternate would be worse
+-                    // than refusing it.
+-                    throw ValueError(
+-                      format("CAS pair(%s,%s) already in binary interaction map; considering enabling configuration key OVERWRITE_BINARY_INTERACTION",
+-                             CAS[0].c_str(), CAS[1].c_str()));
+-                }
+-            }
+-        }
+-    }
+-    /// Add a simple mixing rule
+-    void add_simple_mixing_rule(const std::string& identifier1, const std::string& identifier2, const std::string& rule) {
+-        // Get the empty dictionary to be filled by the appropriate reducing parameter filling function
+-        Dictionary dict;
+-
+-        // Get the names/CAS of the compounds
+-        std::string CAS1, CAS2, name1 = identifier1, name2 = identifier2;
+-        shared_ptr<CoolProp::HelmholtzEOSMixtureBackend> HEOS1, HEOS2;
+-
+-        std::vector<std::string> id1split = strsplit(identifier1, '-');
+-        if (id1split.size() == 3) {  // Check if identifier is in CAS format
+-            CAS1 = identifier1;
+-        } else {
+-            std::vector<std::string> names1(1, identifier1);
+-            HEOS1 = std::make_shared<CoolProp::HelmholtzEOSMixtureBackend>(names1);
+-            CAS1 = HEOS1->fluid_param_string("CAS");
+-        }
+-
+-        std::vector<std::string> id2split = strsplit(identifier2, '-');
+-        if (id2split.size() == 3) {  // Check if identifier is in CAS format
+-            CAS2 = identifier2;
+-        } else {
+-            std::vector<std::string> names2(1, identifier2);
+-            HEOS2 = std::make_shared<CoolProp::HelmholtzEOSMixtureBackend>(names2);
+-            CAS2 = HEOS2->fluid_param_string("CAS");
+-        }
+-
+-        // Get the vector of CAS numbers
+-        std::vector<std::string> CAS;
+-        CAS.push_back(CAS1);
+-        CAS.push_back(CAS2);
+-
+-        // Sort the CAS number vector
+-        std::sort(CAS.begin(), CAS.end());
+-
+-        // Swap fluid names if the CAS numbers were swapped
+-        if (CAS[0] != CAS1) {
+-            std::swap(name1, name2);
+-        }
+-
+-        // Populate the dictionary with common terms
+-        dict.add_string("name1", name1);
+-        dict.add_string("name2", name2);
+-        dict.add_string("BibTeX", "N/A - " + rule);
+-        dict.add_number("F", 0);
+-        dict.add_string("type", "GERG-2008");
+-
+-        if (rule == "linear") {
+-            // Terms for linear mixing
+-            HEOS1 = std::make_shared<CoolProp::HelmholtzEOSMixtureBackend>(std::vector<std::string>(1, name1));
+-            HEOS2 = std::make_shared<CoolProp::HelmholtzEOSMixtureBackend>(std::vector<std::string>(1, name2));
+-
+-            dict.add_number("gammaT", 0.5 * (HEOS1->T_critical() + HEOS2->T_critical()) / sqrt(HEOS1->T_critical() * HEOS2->T_critical()));
+-            double rhoc1 = HEOS1->rhomolar_critical(), rhoc2 = HEOS2->rhomolar_critical();
+-            dict.add_number("gammaV", 4 * (1 / rhoc1 + 1 / rhoc2) / pow(1 / pow(rhoc1, 1.0 / 3.0) + 1 / pow(rhoc2, 1.0 / 3.0), 3));
+-            dict.add_number("betaV", 1.0);
+-            dict.add_number("betaT", 1.0);
+-        } else if (rule == "Lorentz-Berthelot") {
+-            // Terms for Lorentz-Berthelot quadratic mixing
+-
+-            dict.add_number("gammaT", 1.0);
+-            dict.add_number("gammaV", 1.0);
+-            dict.add_number("betaV", 1.0);
+-            dict.add_number("betaT", 1.0);
+-        } else {
+-            throw ValueError(format("Your simple mixing rule [%s] was not understood", rule.c_str()));
+-        }
+-
+-        auto it = m_binary_pair_map.find(CAS);
+-        if (it == m_binary_pair_map.end()) {
+-            // Add to binary pair map by creating one-element vector
+-            m_binary_pair_map.emplace(CAS, std::vector<Dictionary>(1, dict));
+-        } else {
+-            if (get_config_bool(OVERWRITE_BINARY_INTERACTION)) {
+-                // Already there, see http://www.cplusplus.com/reference/map/map/insert/, so we are going to pop it and overwrite it
+-                m_binary_pair_map.erase(it);
+-                std::pair<std::map<std::vector<std::string>, std::vector<Dictionary>>::iterator, bool> ret;
+-                ret = m_binary_pair_map.emplace(CAS, std::vector<Dictionary>(1, dict));
+-                assert(ret.second == true);
+-            } else {
+-                // Error if already in map!
+-                throw ValueError(
+-                  format("CAS pair(%s,%s) already in binary interaction map; considering enabling configuration key OVERWRITE_BINARY_INTERACTION",
+-                         CAS[0].c_str(), CAS[1].c_str()));
+-            }
+-        }
+-    }
+-};
+-// The modifiable parameter library
+-static MixtureBinaryPairLibrary mixturebinarypairlibrary;
+-
+-/// Add a simple mixing rule
+-void apply_simple_mixing_rule(const std::string& identifier1, const std::string& identifier2, const std::string& rule) {
+-    mixturebinarypairlibrary.load_defaults_if_needed();
+-    mixturebinarypairlibrary.add_simple_mixing_rule(identifier1, identifier2, rule);
++std::string get_csv_predefined_mixtures() {
++    return "";
+ }
+ 
+-std::string get_csv_mixture_binary_pairs() {
+-
+-    std::vector<std::string> out;
+-    for (const auto& [key, val] : mixturebinarypairlibrary.binary_pair_map()) {
+-        out.push_back(strjoin(key, "&"));
+-    }
+-    return strjoin(out, ",");
++bool is_predefined_mixture(const std::string& /*name*/, Dictionary& /*dict*/) {
++    return false;
+ }
+ 
+-std::string get_mixture_binary_pair_data(const std::string& CAS1, const std::string& CAS2, const std::string& key) {
+-    // Find pair
+-    std::vector<std::string> CAS;
+-    CAS.push_back(CAS1);
+-    CAS.push_back(CAS2);
++void set_predefined_mixtures(const std::string& /*string_data*/) {}
+ 
+-    if (mixturebinarypairlibrary.binary_pair_map().find(CAS) != mixturebinarypairlibrary.binary_pair_map().end()) {
+-        std::vector<Dictionary>& v = mixturebinarypairlibrary.binary_pair_map()[CAS];
+-        try {
+-            if (key == "name1") {
+-                return v[0].get_string("name1");
+-            } else if (key == "name2") {
+-                return v[0].get_string("name2");
+-            } else if (key == "BibTeX") {
+-                return v[0].get_string("BibTeX");
+-            } else if (key == "function") {
+-                return v[0].get_string("function");
+-            } else if (key == "type") {
+-                return v[0].get_string("type");
+-            } else if (key == "F") {
+-                return format("%0.16g", v[0].get_double("F"));
+-            } else if (key == "xi") {
+-                return format("%0.16g", v[0].get_double("xi"));
+-            } else if (key == "zeta") {
+-                return format("%0.16g", v[0].get_double("zeta"));
+-            } else if (key == "gammaT") {
+-                return format("%0.16g", v[0].get_double("gammaT"));
+-            } else if (key == "gammaV") {
+-                return format("%0.16g", v[0].get_double("gammaV"));
+-            } else if (key == "betaT") {
+-                return format("%0.16g", v[0].get_double("betaT"));
+-            } else if (key == "betaV") {
+-                return format("%0.16g", v[0].get_double("betaV"));
+-            } else {
+-            }
+-        } catch (...) {  // NOLINT(bugprone-empty-catch)
+-            // Dictionary lookup threw (e.g. key present but wrong type);
+-            // fall through to the ValueError below so the caller sees a
+-            // uniform "could not match the parameter" message.
+-        }
+-        throw ValueError(format("Could not match the parameter [%s] for the binary pair [%s,%s] - for now this is an error.", key.c_str(),
+-                                CAS1.c_str(), CAS2.c_str()));
+-    } else {
+-        // Sort, see if other order works properly
+-        std::sort(CAS.begin(), CAS.end());
+-        if (mixturebinarypairlibrary.binary_pair_map().find(CAS) != mixturebinarypairlibrary.binary_pair_map().end()) {
+-            throw ValueError(format("Could not match the binary pair [%s,%s] - order of CAS numbers is backwards; found the swapped CAS numbers.",
+-                                    CAS1.c_str(), CAS2.c_str()));
+-        } else {
+-            throw ValueError(format("Could not match the binary pair [%s,%s] - for now this is an error.", CAS1.c_str(), CAS2.c_str()));
+-        }
+-    }
++std::string get_mixture_binary_pair_data(const std::string& /*CAS1*/, const std::string& /*CAS2*/, const std::string& /*param*/) {
++    throw ValueError("Mixture binary pairs disabled in N2O-only embedded build");
+ }
+-void set_mixture_binary_pair_data(const std::string& CAS1, const std::string& CAS2, const std::string& key, const double value) {
+ 
+-    // Find pair
+-    std::vector<std::string> CAS;
+-    CAS.push_back(CAS1);
+-    CAS.push_back(CAS2);
+-
+-    if (mixturebinarypairlibrary.binary_pair_map().find(CAS) != mixturebinarypairlibrary.binary_pair_map().end()) {
+-        std::vector<Dictionary>& v = mixturebinarypairlibrary.binary_pair_map()[CAS];
+-        if (v[0].has_number(key)) {
+-            v[0].add_number(key, value);
+-        } else {
+-            throw ValueError(format("Could not set the parameter [%s] for the binary pair [%s,%s] - for now this is an error", key.c_str(),
+-                                    CAS1.c_str(), CAS2.c_str()));
+-        }
+-    } else {
+-        // Sort, see if other order works properly
+-        std::sort(CAS.begin(), CAS.end());
+-        if (mixturebinarypairlibrary.binary_pair_map().find(CAS) != mixturebinarypairlibrary.binary_pair_map().end()) {
+-            throw ValueError(format("Could not match the binary pair [%s,%s] - order of CAS numbers is backwards; found the swapped CAS numbers.",
+-                                    CAS1.c_str(), CAS2.c_str()));
+-        } else {
+-            throw ValueError(format("Could not match the binary pair [%s,%s] - for now this is an error.", CAS1.c_str(), CAS2.c_str()));
+-        }
+-    }
++void set_mixture_binary_pair_data(const std::string& /*CAS1*/, const std::string& /*CAS2*/, const std::string& /*param*/, const double /*val*/) {
++    throw ValueError("Mixture binary pairs disabled in N2O-only embedded build");
+ }
+ 
+-std::string get_reducing_function_name(const std::string& CAS1, const std::string& CAS2) {
+-
+-    std::vector<std::string> CAS;
+-    CAS.push_back(CAS1);
+-    CAS.push_back(CAS2);
+-
+-    // Sort the CAS number vector - map is based on sorted CAS codes
+-    std::sort(CAS.begin(), CAS.end());
+-
+-    if (mixturebinarypairlibrary.binary_pair_map().find(CAS) != mixturebinarypairlibrary.binary_pair_map().end()) {
+-        return mixturebinarypairlibrary.binary_pair_map()[CAS][0].get_string("function");
+-    } else {
+-        throw ValueError(format("Could not match the binary pair [%s,%s] - for now this is an error.", CAS1.c_str(), CAS2.c_str()));
+-    }
++void apply_simple_mixing_rule(const std::string& /*identifier1*/, const std::string& /*identifier2*/, const std::string& /*rule*/) {
++    throw ValueError("Mixing rules disabled in N2O-only embedded build");
+ }
+ 
+-void set_interaction_parameters(const std::string& string_data) {
+-    // JSON-encoded string for binary interaction parameters
+-    mixturebinarypairlibrary.load_from_string(string_data);
++DepartureFunction* get_departure_function(const std::string& /*Name*/) {
++    throw ValueError("Departure functions disabled in N2O-only embedded build");
+ }
+ 
+-/** \brief A container for the departure functions for CoolProp mixtures
+- */
+-class MixtureDepartureFunctionsLibrary
+-{
+-   private:
+-    /// Map from sorted pair of CAS numbers to departure term dictionary.
+-    std::map<std::string, Dictionary> m_departure_function_map;
+-    /// Guards single-threaded population of m_departure_function_map.
+-    std::once_flag m_load_flag;
+-
+-   public:
+-    std::map<std::string, Dictionary>& departure_function_map() {
+-        load_defaults_if_needed();
+-        return m_departure_function_map;
+-    };
++void set_departure_functions(const std::string& /*string_data*/) {}
+ 
+-    void load_from_string(const std::string_view& str) {
+-        nlohmann::json doc = cpjson::parse(str);
+-        load_from_JSON(doc);
+-    }
+-    void load_from_JSON(const nlohmann::json& doc) {
+-        // Iterate over the departure functions in the listing
+-        for (const auto& el : doc) {
+-            // Get the empty dictionary to be filled in
+-            Dictionary dict;
+-
+-            // Populate the dictionary with common terms
+-            std::string Name = cpjson::get_string(el, "Name");
+-            std::string type = cpjson::get_string(el, "type");
+-            dict.add_string("Name", Name);
+-            dict.add_string("BibTeX", cpjson::get_string(el, "BibTeX"));
+-            dict.add_string_vector("aliases", cpjson::get_string_array(el, "aliases"));
+-            dict.add_string("type", type);
++void set_interaction_parameters(const std::string& /*string_data*/) {}
+ 
+-            // Terms for the power (common to both types)
+-            dict.add_double_vector("n", cpjson::get_double_array(el, "n"));
+-            dict.add_double_vector("d", cpjson::get_double_array(el, "d"));
+-            dict.add_double_vector("t", cpjson::get_double_array(el, "t"));
+-
+-            // Now we need to load additional terms
+-            if (!type.compare("GERG-2008")) {
+-                // Number of terms that are power terms
+-                dict.add_number("Npower", cpjson::get_double(el, "Npower"));
+-                // Terms for the gaussian
+-                dict.add_double_vector("eta", cpjson::get_double_array(el, "eta"));
+-                dict.add_double_vector("epsilon", cpjson::get_double_array(el, "epsilon"));
+-                dict.add_double_vector("beta", cpjson::get_double_array(el, "beta"));
+-                dict.add_double_vector("gamma", cpjson::get_double_array(el, "gamma"));
+-            } else if (type == "Gaussian+Exponential") {
+-                // Number of terms that are power terms
+-                dict.add_number("Npower", cpjson::get_double(el, "Npower"));
+-                // The decay strength parameters
+-                dict.add_double_vector("l", cpjson::get_double_array(el, "l"));
+-                // Terms for the gaussian part
+-                dict.add_double_vector("eta", cpjson::get_double_array(el, "eta"));
+-                dict.add_double_vector("epsilon", cpjson::get_double_array(el, "epsilon"));
+-                dict.add_double_vector("beta", cpjson::get_double_array(el, "beta"));
+-                dict.add_double_vector("gamma", cpjson::get_double_array(el, "gamma"));
+-            } else if (!type.compare("Exponential")) {
+-                dict.add_double_vector("l", cpjson::get_double_array(el, "l"));
+-            } else {
+-                throw ValueError(format("It was not possible to parse departure function with type [%s]", type.c_str()));
+-            }
+-            // Add the normal name;
+-            add_one(Name, dict);
+-            std::vector<std::string> aliases = dict.get_string_vector("aliases");
+-            // Add the aliases too;
+-            for (const auto& alias : aliases) {
+-                // Add the alias;
+-                add_one(alias, dict);
+-            }
+-        }
+-    }
+-    void add_one(const std::string& name, Dictionary& dict) {
+-
+-        // Check if this name is already in use
+-        auto it = m_departure_function_map.find(name);
+-        if (it == m_departure_function_map.end()) {
+-            // Not in map, add new entry to map with dictionary as value and Name as key
+-            m_departure_function_map.insert(std::pair<std::string, Dictionary>(name, dict));
+-        } else {
+-            if (get_config_bool(OVERWRITE_DEPARTURE_FUNCTION)) {
+-                // Already there, see http://www.cplusplus.com/reference/map/map/insert/
+-                m_departure_function_map.erase(it);
+-                std::pair<std::map<std::string, Dictionary>::iterator, bool> ret;
+-                ret = m_departure_function_map.emplace(name, dict);
+-                assert(ret.second == true);
+-            } else {
+-                // Error if already in map!
+-                //
+-                // Collect all the current names for departure functions for a nicer error message
+-                std::vector<std::string> names;
+-                names.reserve(m_departure_function_map.size());
+-                for (const auto& [name, dict] : m_departure_function_map) {
+-                    names.push_back(name);
+-                }
+-                throw ValueError(format("Name of departure function [%s] is already loaded. Current departure function names are: %s", name.c_str(),
+-                                        strjoin(names, ",").c_str()));
+-            }
+-        }
+-    }
+-    void load_defaults_if_needed() {
+-        std::call_once(m_load_flag, [this] { load_defaults(); });
+-    }
+-    // Load the defaults that come from the JSON-encoded string compiled into library
+-    // as the variable mixture_departure_functions_JSON
+-    void load_defaults() {
+-        load_from_string(mixture_departure_functions_JSON);
+-    }
+-};
+-static MixtureDepartureFunctionsLibrary mixturedeparturefunctionslibrary;
+-
+-DepartureFunction* get_departure_function(const std::string& Name) {
+-    // Get the dictionary itself
+-    Dictionary& dict_dep = mixturedeparturefunctionslibrary.departure_function_map()[Name];
+-
+-    if (dict_dep.is_empty()) {
+-        throw ValueError(format("Departure function name [%s] seems to be invalid", Name.c_str()));
+-    }
+-
+-    // These terms are common
+-    std::vector<double> n = dict_dep.get_double_vector("n");
+-    std::vector<double> d = dict_dep.get_double_vector("d");
+-    std::vector<double> t = dict_dep.get_double_vector("t");
+-
+-    std::string type_dep = dict_dep.get_string("type");
+-
+-    if (!type_dep.compare("GERG-2008")) {
+-        // Number of power terms needed
+-        int Npower = static_cast<int>(dict_dep.get_number("Npower"));
+-        // Terms for the gaussian
+-        std::vector<double> eta = dict_dep.get_double_vector("eta");
+-        std::vector<double> epsilon = dict_dep.get_double_vector("epsilon");
+-        std::vector<double> beta = dict_dep.get_double_vector("beta");
+-        std::vector<double> gamma = dict_dep.get_double_vector("gamma");
+-        return new GERG2008DepartureFunction(n, d, t, eta, epsilon, beta, gamma, Npower);
+-    } else if (!type_dep.compare("Exponential")) {
+-        // Powers of the exponents inside the exponential term
+-        std::vector<double> l = dict_dep.get_double_vector("l");
+-        return new ExponentialDepartureFunction(n, d, t, l);
+-    } else if (!type_dep.compare("Gaussian+Exponential")) {
+-        // Number of power terms needed
+-        int Npower = static_cast<int>(dict_dep.get_number("Npower"));
+-        // Powers of the exponents inside the exponential term
+-        std::vector<double> l = dict_dep.get_double_vector("l");
+-        // Terms for the gaussian
+-        std::vector<double> eta = dict_dep.get_double_vector("eta");
+-        std::vector<double> epsilon = dict_dep.get_double_vector("epsilon");
+-        std::vector<double> beta = dict_dep.get_double_vector("beta");
+-        std::vector<double> gamma = dict_dep.get_double_vector("gamma");
+-        return new GaussianExponentialDepartureFunction(n, d, t, l, eta, epsilon, beta, gamma, Npower);
+-    } else {
+-        throw ValueError();
+-    }
+-}
+ void MixtureParameters::set_mixture_parameters(HelmholtzEOSMixtureBackend& HEOS) {
+-
+     std::vector<CoolPropFluid> components = HEOS.get_components();
++    const std::size_t N = components.size();
++    if (N != 1) {
++        throw ValueError("N2O-only embedded build supports pure fluids only");
++    }
+ 
+-    std::size_t N = components.size();
+-
+-    STLMatrix beta_v, gamma_v, beta_T, gamma_T;
+-    beta_v.resize(N, std::vector<CoolPropDbl>(N, 0));
+-    gamma_v.resize(N, std::vector<CoolPropDbl>(N, 0));
+-    beta_T.resize(N, std::vector<CoolPropDbl>(N, 0));
+-    gamma_T.resize(N, std::vector<CoolPropDbl>(N, 0));
++    STLMatrix beta_v(N, std::vector<CoolPropDbl>(N, 0));
++    STLMatrix gamma_v(N, std::vector<CoolPropDbl>(N, 0));
++    STLMatrix beta_T(N, std::vector<CoolPropDbl>(N, 0));
++    STLMatrix gamma_T(N, std::vector<CoolPropDbl>(N, 0));
+ 
+     HEOS.residual_helmholtz->Excess.resize(N);
+-
+-    for (std::size_t i = 0; i < N; ++i) {
+-        for (std::size_t j = 0; j < N; ++j) {
+-            if (i == j) {
+-                continue;
+-            }
+-
+-            std::string CAS1 = components[i].CAS;
+-            std::vector<std::string> CAS(2, "");
+-            CAS[0] = components[i].CAS;
+-            CAS[1] = components[j].CAS;
+-            std::sort(CAS.begin(), CAS.end());
+-
+-            // The variable swapped is true if a swap occurred.
+-            bool swapped = (CAS1.compare(CAS[0]) != 0);
+-
+-            // ***************************************************
+-            //         Reducing parameters for binary pair
+-            // ***************************************************
+-
+-            if (mixturebinarypairlibrary.binary_pair_map().find(CAS) == mixturebinarypairlibrary.binary_pair_map().end()) {
+-                throw ValueError(format("Could not match the binary pair [%s,%s] - for now this is an error.", CAS[0].c_str(), CAS[1].c_str()));
+-            }
+-
+-            // Get a reference to the first matching binary pair in the dictionary
+-            Dictionary& dict_red = mixturebinarypairlibrary.binary_pair_map()[CAS][0];
+-
+-            // Get the name of the type being used, one of GERG-2008, Lemmon-xi-zeta, etc.
+-            std::string type_red = dict_red.get_string("type");
+-
+-            if (!type_red.compare("GERG-2008")) {
+-                if (swapped) {
+-                    beta_v[i][j] = 1 / dict_red.get_number("betaV");
+-                    beta_T[i][j] = 1 / dict_red.get_number("betaT");
+-                } else {
+-                    beta_v[i][j] = dict_red.get_number("betaV");
+-                    beta_T[i][j] = dict_red.get_number("betaT");
+-                }
+-                gamma_v[i][j] = dict_red.get_number("gammaV");
+-                gamma_T[i][j] = dict_red.get_number("gammaT");
+-            } else if (!type_red.compare("Lemmon-xi-zeta")) {
+-                LemmonAirHFCReducingFunction::convert_to_GERG(components, i, j, dict_red, beta_T[i][j], beta_v[i][j], gamma_T[i][j], gamma_v[i][j]);
+-            } else {
+-                throw ValueError(format("type [%s] for reducing function for pair [%s, %s] is invalid", type_red.c_str(),
+-                                        dict_red.get_string("Name1").c_str(), dict_red.get_string("Name2").c_str()));
+-            }
+-            /*
+-            if (i == 0){
+-                std::cout << format("betaT %10.9Lg gammaT %10.9Lg betaV %10.9Lg gammaV %10.9Lg %s",
+-                                    beta_T[i][j], gamma_T[i][j], beta_v[i][j], gamma_v[i][j], get_mixture_binary_pair_data(CAS[0],CAS[1],"gammaT").c_str()) << std::endl;
+-            }
+-            */
+-
+-            // ***************************************************
+-            //     Departure functions used in excess term
+-            // ***************************************************
+-
+-            // Set the scaling factor F for the excess term
+-            HEOS.residual_helmholtz->Excess.F[i][j] = dict_red.get_number("F");
+-
+-            if (std::abs(HEOS.residual_helmholtz->Excess.F[i][j]) < DBL_EPSILON) {
+-                // Empty departure function that will just return 0
+-                std::vector<double> n(1, 0), d(1, 1), t(1, 1), l(1, 0);
+-                HEOS.residual_helmholtz->Excess.DepartureFunctionMatrix[i][j] = std::make_shared<ExponentialDepartureFunction>(n, d, t, l);
+-                continue;
+-            }
+-
+-            // Get the name of the departure function to be used for this binary pair
+-            std::string Name = CoolProp::get_reducing_function_name(components[i].CAS, components[j].CAS);
+-
+-            HEOS.residual_helmholtz->Excess.DepartureFunctionMatrix[i][j].reset(get_departure_function(Name));
+-        }
+-    }
+-    // We have obtained all the parameters needed for the reducing function, now set the reducing function for the mixture
+     HEOS.Reducing = std::make_shared<GERG2008ReducingFunction>(components, beta_v, gamma_v, beta_T, gamma_T);
+ }
+ 
+-void parse_HMX_BNC(const std::string& s, std::vector<REFPROP_binary_element>& BIP, std::vector<REFPROP_departure_function>& functions) {
+-    // Capture the betas, gammas, Fij, models
+-    bool block_started = false;
+-    std::size_t i_started = 0, i_ended = 0, i = 0;
+-    std::vector<std::string> lines = strsplit(s, '\n');
+-    for (auto& line : lines) {
+-        if (strstartswith(strstrip(line), "#BNC")) {
+-            block_started = true;
+-            i_started = i + 1;
+-        }
+-        if (block_started && strstrip(line).empty()) {
+-            i_ended = i - 1;
+-            break;
+-        }
+-        i++;
+-    }
+-    // Find the first line with a !
+-    for (i = i_started; i < i_ended; ++i) {
+-        if (strstrip(lines[i]) == "!") {
+-            i_started = i;
+-            break;
+-        }
+-    }
+-    // Find all the lines that '!' - these are delimiters
+-    std::vector<std::pair<std::size_t, std::size_t>> bounds;  // The left and right indices (inclusive) that form a binary pair
+-    std::size_t last_excalamation = i_started;
+-    for (i = i_started; i <= i_ended; ++i) {
+-        if (strstrip(lines[i]) == "!") {
+-            bounds.push_back(std::make_pair<std::size_t, std::size_t>(last_excalamation + 1, i - 1));
+-            last_excalamation = i;
+-        }
+-    }
+-    // Parse each chunk
+-    std::vector<REFPROP_binary_element> chunks;
+-    for (const auto& [bstart, bend] : bounds) {
+-        REFPROP_binary_element bnc;
+-        for (std::size_t i = bstart; i <= bend; ++i) {
+-            // Store comments
+-            if (strstartswith(lines[i], "?")) {
+-                bnc.comments.push_back(lines[i]);
+-                continue;
+-            }
+-            // Parse the line with the thermo BIP
+-            if (lines[i].find('/') > 0) {
+-                // Split at ' '
+-                std::vector<std::string> bits = strsplit(strstrip(lines[i]), ' ');
+-                // Remove empty elements
+-                for (std::size_t j = bits.size() - 1; j > 0; --j) {
+-                    if (bits[j].empty()) {
+-                        bits.erase(bits.begin() + j);
+-                    }
+-                }
+-                // Get the line that contains the thermo BIP
+-                if (bits[0].find('/') > 0 && bits[1].size() == 3) {
+-                    std::vector<std::string> theCAS = strsplit(bits[0], '/');
+-                    bnc.CAS1 = theCAS[0];
+-                    bnc.CAS2 = theCAS[1];
+-                    bnc.model = bits[1];
+-                    bnc.betaT = string2double(bits[2]);
+-                    bnc.gammaT = string2double(bits[3]);
+-                    bnc.betaV = string2double(bits[4]);
+-                    bnc.gammaV = string2double(bits[5]);
+-                    bnc.Fij = string2double(bits[6]);
+-                    break;
+-                } else if (strstrip(bits[0]) == "CAS#") {
+-                    break;
+-                } else {
+-                    throw CoolProp::ValueError(format("Unable to parse binary interaction line: %s", lines[i]));
+-                }
+-            }
+-        }
+-        if (!bnc.CAS1.empty()) {
+-            BIP.push_back(bnc);
+-        }
+-    }
+-
+-    // ****************************************
+-    //      Parse the departure functions
+-    // ****************************************
+-    for (std::size_t i = i_ended + 1; i < lines.size(); ++i) {
+-        std::size_t j_end = 0;
+-        // Find the end of this block
+-        for (j_end = i + 1; j_end < lines.size(); ++j_end) {
+-            if (strstrip(lines[j_end]).empty()) {
+-                j_end -= 1;
+-                break;
+-            }
+-        }
+-
+-        if (strstartswith(lines[i], "#MXM")) {
+-            REFPROP_departure_function dep;
+-            dep.Npower = -1;
+-            dep.model = std::string(lines[i + 1].begin(), lines[i + 1].begin() + 3);
+-            dep.comments.push_back(lines[i + 1]);
+-            for (std::size_t j = i + 2; j <= j_end; ++j) {
+-                if (strstartswith(strstrip(lines[j]), "?")) {
+-                    dep.comments.push_back(lines[j]);
+-                    continue;
+-                }
+-                if (strstartswith(strstrip(lines[j]), "!")) {
+-                    j += 2;  // Skip the BIP here, not used
+-                    continue;
+-                }
+-                std::vector<std::string> bits = strsplit(lines[j], ' ');
+-                // Remove empty elements
+-                for (std::size_t k = bits.size() - 1; k > 0; --k) {
+-                    if (bits[k].empty()) {
+-                        bits.erase(bits.begin() + k);
+-                    }
+-                }
+-
+-                if (dep.Npower < 0) {  // Not extracted yet, let's do it now
+-                    // Extract the number of terms
+-                    dep.Npower = static_cast<short>(strtol(bits[0].c_str(), nullptr, 10));
+-                    dep.Nterms_power = static_cast<short>(strtol(bits[1].c_str(), nullptr, 10));
+-                    dep.Nspecial = static_cast<short>(strtol(bits[3].c_str(), nullptr, 10));
+-                    dep.Nterms_special = static_cast<short>(strtol(bits[4].c_str(), nullptr, 10));
+-                } else {
+-                    dep.a.push_back(string2double(bits[0]));
+-                    dep.t.push_back(string2double(bits[1]));
+-                    dep.d.push_back(string2double(bits[2]));
+-                    // Extracting "polynomial" terms
+-                    if (dep.Nterms_power == 4) {
+-                        dep.e.push_back(string2double(bits[3]));
+-                    }
+-                    if (dep.Nspecial > 0) {
+-                        if (dep.a.size() - 1 < static_cast<size_t>(dep.Npower)) {
+-                            dep.eta.push_back(0);
+-                            dep.epsilon.push_back(0);
+-                            dep.beta.push_back(0);
+-                            dep.gamma.push_back(0);
+-                        } else {
+-                            // Extracting "special" terms
+-                            dep.eta.push_back(string2double(bits[3]));
+-                            dep.epsilon.push_back(string2double(bits[4]));
+-                            dep.beta.push_back(string2double(bits[5]));
+-                            dep.gamma.push_back(string2double(bits[6]));
+-                        }
+-                    }
+-                }
+-            }
+-            functions.push_back(dep);
+-        }
+-    }
+-}
+-
+-void set_departure_functions(const std::string& string_data) {
+-    if (string_data.find("#MXM") != std::string::npos) {
+-        // REFPROP HMX.BNC file was provided
+-        std::vector<REFPROP_binary_element> BIP;
+-        std::vector<REFPROP_departure_function> functions;
+-        parse_HMX_BNC(string_data, BIP, functions);
+-
+-        {
+-            nlohmann::json doc = nlohmann::json::array();
+-            for (const auto& bip : BIP) {
+-                nlohmann::json el;
+-                el["CAS1"] = bip.CAS1;
+-                el["CAS2"] = bip.CAS2;
+-                el["Name1"] = "??";
+-                el["Name2"] = "??";
+-                el["betaT"] = bip.betaT;
+-                el["gammaT"] = bip.gammaT;
+-                el["betaV"] = bip.betaV;
+-                el["gammaV"] = bip.gammaV;
+-                el["F"] = bip.Fij;
+-                el["function"] = bip.model;
+-                el["BibTeX"] = "(from HMX.BNC format)::" + strjoin(bip.comments, "\n");
+-                doc.push_back(std::move(el));
+-            }
+-            mixturebinarypairlibrary.load_from_JSON(doc);
+-        }
+-        {
+-            nlohmann::json doc = nlohmann::json::array();
+-            for (const auto& func : functions) {
+-                nlohmann::json el;
+-                el["Name"] = func.model;
+-                el["aliases"] = nlohmann::json::array();
+-                el["n"] = func.a;
+-                el["d"] = func.d;
+-                el["t"] = func.t;
+-                if (func.Nterms_special > 0 || func.Nterms_power == 3) {
+-                    el["type"] = "GERG-2008";
+-                    el["Npower"] = func.Npower;
+-                    if (func.Nterms_power == 3 && func.Nspecial == 0) {
+-                        std::vector<double> zeros(func.a.size(), 0.0);
+-                        el["eta"] = zeros;
+-                        el["epsilon"] = zeros;
+-                        el["beta"] = zeros;
+-                        el["gamma"] = zeros;
+-                    } else {
+-                        el["eta"] = func.eta;
+-                        el["epsilon"] = func.epsilon;
+-                        el["beta"] = func.beta;
+-                        el["gamma"] = func.gamma;
+-                    }
+-                } else {
+-                    el["type"] = "Exponential";
+-                    el["l"] = func.e;
+-                }
+-                el["BibTeX"] = "(from HMX.BNC format)::" + strjoin(func.comments, "\n");
+-                doc.push_back(std::move(el));
+-            }
+-            mixturedeparturefunctionslibrary.load_from_JSON(doc);
+-        }
+-    } else {
+-        // JSON-encoded string for departure functions
+-        mixturedeparturefunctionslibrary.load_from_string(string_data);
+-    }
+-}
+-
+ } /* namespace CoolProp */
+diff --git a/src/Backends/REFPROP/REFPROPMixtureBackend.h b/src/Backends/REFPROP/REFPROPMixtureBackend.h
+index 935d86a6..885a2388 100644
+--- a/src/Backends/REFPROP/REFPROPMixtureBackend.h
++++ b/src/Backends/REFPROP/REFPROPMixtureBackend.h
+@@ -12,7 +12,7 @@
+ #include "CoolProp/CoolPropFluid.h"
+ #include "CoolProp/DataStructures.h"
+ 
+-#include <mutex>
++// #include <mutex>
+ #include <string>
+ #include <vector>
+ 
+@@ -43,9 +43,9 @@ Instances on different fluids also force a SETUP (a read of the fluid files)
+ on nearly every call, and long operations such as phase envelopes hold the
+ lock throughout, so concurrent REFPROP use is correct but not fast.
+ */
+-std::recursive_mutex& REFPROP_mutex();
++// std::recursive_mutex& REFPROP_mutex();
+ /// RAII guard type for REFPROP_mutex()
+-using REFPROPLock = std::scoped_lock<std::recursive_mutex>;
++// using REFPROPLock = std::scoped_lock<std::recursive_mutex>;
+ 
+ /// Return the REFPROP .FLD stem for a CoolPropFluid.
+ /// Falls back to `fallback` when REFPROPname is absent or the sentinel "N/A",
+@@ -109,7 +109,7 @@ class REFPROPMixtureBackend : public AbstractState
+ 
+    public:
+     REFPROPMixtureBackend() : Ncomp(0), _mole_fractions_set(false) {
+-        const REFPROPLock refprop_lock(REFPROP_mutex());
++        // const REFPROPLock refprop_lock(REFPROP_mutex());
+         instance_counter++;
+     }
+ 
+diff --git a/src/CPstrings.cpp b/src/CPstrings.cpp
+index 0d9a6c34..35ea61ad 100644
+--- a/src/CPstrings.cpp
++++ b/src/CPstrings.cpp
+@@ -1,5 +1,6 @@
+ #include "CoolProp/detail/strings.h"
+ #include <cctype>
++#include <cstdarg>
+ #include <memory>
+ using std::shared_ptr;
+ #include <vector>
+diff --git a/src/Configuration.cpp b/src/Configuration.cpp
+index f823a7c2..b9134dd6 100644
+--- a/src/Configuration.cpp
++++ b/src/Configuration.cpp
+@@ -1,7 +1,8 @@
+ #include "CoolProp/Configuration.h"
+ #include "CoolProp/detail/json.h"
+-#include "src/Backends/REFPROP/REFPROPMixtureBackend.h"
+-#include <mutex>
++// N2O-only: REFPROP configuration hooks disabled.
++// #include "src/Backends/REFPROP/REFPROPMixtureBackend.h"
++// #include <mutex>
+ 
+ namespace {
+ 
+@@ -125,15 +126,14 @@ configuration_keys config_string_to_key(const std::string& s) {
+ };
+ 
+ std::unique_ptr<Configuration> pconfig;
+-// Thread-safe lazy initialization of the global configuration, matching the
+-// FluidLibrary singleton.  The previous `if (!pconfig) pconfig = ...` pattern
+-// raced when threads first-called get_/set_config_* concurrently: each could
+-// construct its own instance, the last assignment won, and settings made
+-// through a losing instance were silently lost.
+-static std::once_flag pconfig_init_flag;
++// N2O-only single-threaded firmware: plain lazy init (no std::call_once / mutex).
++// static std::once_flag pconfig_init_flag;
+ /// A helper function to ensure that configuration is not accessed before it is initialized (was formerly static)
+ Configuration* _get_config() {
+-    std::call_once(pconfig_init_flag, [] { pconfig = std::make_unique<Configuration>(); });
++    // std::call_once(pconfig_init_flag, [] { pconfig = std::make_unique<Configuration>(); });
++    if (!pconfig) {
++        pconfig = std::make_unique<Configuration>();
++    }
+     return pconfig.get();
+ }
+ 
+@@ -146,16 +146,13 @@ Configuration* _get_config() {
+  *  REFPROP library loaded).
+  */
+ static void on_config_changed(configuration_keys key) {
+-    if (key == ALTERNATIVE_REFPROP_PATH || key == ALTERNATIVE_REFPROP_HMX_BNC_PATH || key == ALTERNATIVE_REFPROP_LIBRARY_PATH) {
+-        // One lock across both steps: another thread could otherwise make a
+-        // load attempt between them that is cached as failed and then
+-        // cleared again, printing the load failure twice.
+-        const REFPROPLock refprop_lock(REFPROP_mutex());
+-        CoolProp::force_unload_REFPROP();
+-        // The new path deserves a new load attempt, even if an earlier
+-        // attempt (with the old path) failed and was cached.
+-        CoolProp::REFPROPMixtureBackend::forget_REFPROP_load_failure();
+-    }
++    // N2O-only: REFPROP unload side-effects disabled.
++    (void)key;
++    // if (key == ALTERNATIVE_REFPROP_PATH || key == ALTERNATIVE_REFPROP_HMX_BNC_PATH || key == ALTERNATIVE_REFPROP_LIBRARY_PATH) {
++    //     const REFPROPLock refprop_lock(REFPROP_mutex());
++    //     CoolProp::force_unload_REFPROP();
++    //     CoolProp::REFPROPMixtureBackend::forget_REFPROP_load_failure();
++    // }
+ }
+ 
+ void set_config_bool(configuration_keys key, bool val) {
+diff --git a/src/CoolProp.cpp b/src/CoolProp.cpp
+index 24d5ad20..aaad3967 100644
+--- a/src/CoolProp.cpp
++++ b/src/CoolProp.cpp
+@@ -39,21 +39,21 @@
+ #include <string>
+ #include <locale>
+ #include <atomic>
+-#include <mutex>
+-#include <thread>
++// #include <mutex>
++// #include <thread>
+ #include "CoolProp/detail/tools.h"
+ #include "CoolProp/numerics/Solvers.h"
+ #include "CoolProp/numerics/MatrixMath.h"
+ #include "CoolProp/detail/json.h"
+ #include "Backends/Helmholtz/Fluids/FluidLibrary.h"
+-#include "Backends/Incompressible/IncompressibleLibrary.h"
+-#include "Backends/Incompressible/IncompressibleBackend.h"
++// #include "Backends/Incompressible/IncompressibleLibrary.h"
++// #include "Backends/Incompressible/IncompressibleBackend.h"
+ #include "Backends/Helmholtz/HelmholtzEOSBackend.h"
+ #include "Backends/Helmholtz/MixtureParameters.h"
+ #include "CoolProp/DataStructures.h"
+-#include "Backends/REFPROP/REFPROPMixtureBackend.h"
+-#include "Backends/Cubics/CubicsLibrary.h"
+-#include "Backends/PCSAFT/PCSAFTLibrary.h"
++// #include "Backends/REFPROP/REFPROPMixtureBackend.h"
++// #include "Backends/Cubics/CubicsLibrary.h"
++// #include "Backends/PCSAFT/PCSAFTLibrary.h"
+ 
+ #if defined(ENABLE_CATCH)
+ #    include <catch2/catch_all.hpp>
+@@ -84,7 +84,7 @@ static std::atomic<int> debug_level{0};
+ // the pre-#3146 behaviour -- but no longer UB.)
+ static std::string error_string;
+ static std::string warning_string;
+-static std::mutex message_mutex;
++// static std::mutex message_mutex;
+ 
+ void set_debug_level(int level) {
+     debug_level = level;
+@@ -94,15 +94,15 @@ int get_debug_level() {
+ }
+ 
+ //// This is very hacky, but pull the git revision from the file
+-#include "gitrevision.h"  // Contents are like "std::string gitrevision = "aa121435436ggregrea4t43t433";"
+-#include "cpversion.h"    // Contents are like "char version [] = "2.5";"
++// #include "gitrevision.h"  // Contents are like "std::string gitrevision = "aa121435436ggregrea4t43t433";"
++// #include "cpversion.h"    // Contents are like "char version [] = "2.5";"
+ 
+ void set_warning_string(const std::string& warning) {
+-    std::scoped_lock lock(message_mutex);
++    // std::scoped_lock lock(message_mutex);
+     warning_string = warning;
+ }
+ void set_error_string(const std::string& error) {
+-    std::scoped_lock lock(message_mutex);
++    // std::scoped_lock lock(message_mutex);
+     error_string = error;
+ }
+ 
+@@ -704,37 +704,38 @@ double PropsSI(const std::string& Output, const std::string& Name1, double Prop1
+ }
+ 
+ bool add_fluids_as_JSON(const std::string& backend, const std::string& fluidstring) {
+-    if (backend == "SRK" || backend == "PR") {
+-        CubicLibrary::add_fluids_as_JSON(fluidstring);
+-        return true;
+-    } else if (backend == "HEOS") {
++    // N2O-only build: HEOS is the only supported backend for fluid injection.
++    // if (backend == "SRK" || backend == "PR") {
++    //     CubicLibrary::add_fluids_as_JSON(fluidstring);
++    //     return true;
++    // } else
++    if (backend == "HEOS") {
+         JSONFluidLibrary::add_many(fluidstring);
+         return true;
+-    } else if (backend == "PCSAFT") {
+-        PCSAFTLibrary::add_fluids_as_JSON(fluidstring);
+-        return true;
+-    } else if (backend == "INCOMP") {
+-        // Accept either a single fluid object or an array of them, matching
+-        // how the embedded incompressible library JSON is structured (#2384)
+-        nlohmann::json j = cpjson::parse(fluidstring);
+-        if (j.is_array()) {
+-            get_incompressible_library().add_many(j);
+-        } else {
+-            get_incompressible_library().add_one(j);
+-        }
+-        return true;
+-    } else {
+-        throw ValueError(format("You have provided an invalid backend [%s] to add_fluids_as_JSON; valid options are SRK, PR, HEOS, PCSAFT, INCOMP",
+-                                backend.c_str()));
++    }
++    // else if (backend == "PCSAFT") {
++    //     PCSAFTLibrary::add_fluids_as_JSON(fluidstring);
++    //     return true;
++    // } else if (backend == "INCOMP") {
++    //     nlohmann::json j = cpjson::parse(fluidstring);
++    //     if (j.is_array()) {
++    //         get_incompressible_library().add_many(j);
++    //     } else {
++    //         get_incompressible_library().add_one(j);
++    //     }
++    //     return true;
++    // }
++    else {
++        throw ValueError(format("You have provided an invalid backend [%s] to add_fluids_as_JSON; valid options are HEOS", backend.c_str()));
+     }
+ }
+ 
+ // Simple function to check if REFPROPMixtureBackend is supported in this environment, so that we can skip
+ // tests that require it in environments where it is not supported (e.g., CI builds on GitHub)
+ void Skip_if_No_REFPROP() {
+-#if defined(ENABLE_CATCH)
+-    if (!CoolProp::REFPROPMixtureBackend::REFPROP_supported()) SKIP("Skipping: REFPROP not supported in this environment.");
+-#endif
++// #if defined(ENABLE_CATCH)
++//     if (!CoolProp::REFPROPMixtureBackend::REFPROP_supported()) SKIP("Skipping: REFPROP not supported in this environment.");
++// #endif
+     // Otherwise, in non-testing environments, this is a no-op.
+ }
+ 
+@@ -1011,25 +1012,25 @@ void set_reference_stateS(const std::string& FluidName, const std::string& refer
+     extract_backend_families(backend.substr(0, backend.find('?')), family, second_family);
+     const bool single_family = (backend.find('&') == std::string::npos);
+     if (single_family && family == REFPROP_BACKEND_FAMILY) {
+-
+-        int ierr = 0, ixflag = 1;
+-        double h0 = 0, s0 = 0, t0 = 0, p0 = 0;
+-        std::array<char, 255> herr{};
+-        std::array<char, 4> hrf{};
+-        double x0[1] = {1};
+-        const char* refstate = reference_state.c_str();
+-        if (strlen(refstate) > 3) {
+-            if (reference_state == "ASHRAE") {
+-                strncpy(hrf.data(), "ASH", hrf.size() - 1);
+-                hrf[hrf.size() - 1] = '\0';
+-            } else {
+-                throw ValueError(format("Reference state string [%s] is more than 3 characters long", reference_state.c_str()));
+-            }
+-        } else {
+-            strncpy(hrf.data(), refstate, hrf.size() - 1);
+-            hrf[hrf.size() - 1] = '\0';
+-        }
+-        REFPROP_SETREF(hrf.data(), ixflag, x0, h0, s0, t0, p0, ierr, herr.data(), 3, 255);
++        throw ValueError("REFPROP backend disabled in N2O-only embedded build");
++        // int ierr = 0, ixflag = 1;
++        // double h0 = 0, s0 = 0, t0 = 0, p0 = 0;
++        // std::array<char, 255> herr{};
++        // std::array<char, 4> hrf{};
++        // double x0[1] = {1};
++        // const char* refstate = reference_state.c_str();
++        // if (strlen(refstate) > 3) {
++        //     if (reference_state == "ASHRAE") {
++        //         strncpy(hrf.data(), "ASH", hrf.size() - 1);
++        //         hrf[hrf.size() - 1] = '\0';
++        //     } else {
++        //         throw ValueError(format("Reference state string [%s] is more than 3 characters long", reference_state.c_str()));
++        //     }
++        // } else {
++        //     strncpy(hrf.data(), refstate, hrf.size() - 1);
++        //     hrf[hrf.size() - 1] = '\0';
++        // }
++        // REFPROP_SETREF(hrf.data(), ixflag, x0, h0, s0, t0, p0, ierr, herr.data(), 3, 255);
+     } else if (backend == "?" || (single_family && family == HEOS_BACKEND_FAMILY)) {
+         CoolProp::HelmholtzEOSMixtureBackend HEOS(std::vector<std::string>(1, fluid));
+         if (reference_state == "IIR") {
+@@ -1176,41 +1177,48 @@ void set_reference_stateD(const std::string& FluidName, double T, double rhomola
+ 
+ std::string get_global_param_string(const std::string& ParamName) {
+     if (ParamName == "version") {
+-        return version;
++        // return version;
++        return "X.X";
+     } else if (ParamName == "gitrevision") {
+-        return gitrevision;
++        // return gitrevision;
++        return "1234";
+     } else if (ParamName == "errstring") {
+-        std::scoped_lock lock(message_mutex);
++        // std::scoped_lock lock(message_mutex);
+         std::string temp = error_string;
+         error_string = "";
+         return temp;
+     } else if (ParamName == "warnstring") {
+-        std::scoped_lock lock(message_mutex);
++        // std::scoped_lock lock(message_mutex);
+         std::string temp = warning_string;
+         warning_string = "";
+         return temp;
+     } else if (ParamName == "FluidsList" || ParamName == "fluids_list" || ParamName == "fluidslist") {
+         return get_fluid_list();
+-    } else if (ParamName == "incompressible_list_pure") {
+-        return get_incompressible_list_pure();
+-    } else if (ParamName == "incompressible_list_solution") {
+-        return get_incompressible_list_solution();
+-    } else if (ParamName == "mixture_binary_pairs_list") {
+-        return get_csv_mixture_binary_pairs();
+-    } else if (ParamName == "parameter_list") {
++    }
++    // N2O-only: non-HEOS global param queries are disabled.
++    // else if (ParamName == "incompressible_list_pure") {
++    //     return get_incompressible_list_pure();
++    // } else if (ParamName == "incompressible_list_solution") {
++    //     return get_incompressible_list_solution();
++    // } else if (ParamName == "mixture_binary_pairs_list") {
++    //     return get_csv_mixture_binary_pairs();
++    // } else if (ParamName == "parameter_list") {
++    //     return get_csv_parameter_list();
++    // } else if (ParamName == "predefined_mixtures") {
++    //     return get_csv_predefined_mixtures();
++    // } else if (ParamName == "HOME") {
++    //     return get_home_dir();
++    // } else if (ParamName == "REFPROP_version") {
++    //     return REFPROPMixtureBackend::version();
++    // } else if (ParamName == "cubic_fluids_schema") {
++    //     return std::string{CoolProp::CubicLibrary::get_cubic_fluids_schema()};
++    // } else if (ParamName == "cubic_fluids_list") {
++    //     return CoolProp::CubicLibrary::get_cubic_fluids_list();
++    // } else if (ParamName == "pcsaft_fluids_schema") {
++    //     return std::string{CoolProp::PCSAFTLibrary::get_pcsaft_fluids_schema()};
++    // }
++    else if (ParamName == "parameter_list") {
+         return get_csv_parameter_list();
+-    } else if (ParamName == "predefined_mixtures") {
+-        return get_csv_predefined_mixtures();
+-    } else if (ParamName == "HOME") {
+-        return get_home_dir();
+-    } else if (ParamName == "REFPROP_version") {
+-        return REFPROPMixtureBackend::version();
+-    } else if (ParamName == "cubic_fluids_schema") {
+-        return std::string{CoolProp::CubicLibrary::get_cubic_fluids_schema()};
+-    } else if (ParamName == "cubic_fluids_list") {
+-        return CoolProp::CubicLibrary::get_cubic_fluids_list();
+-    } else if (ParamName == "pcsaft_fluids_schema") {
+-        return std::string{CoolProp::PCSAFTLibrary::get_pcsaft_fluids_schema()};
+     } else {
+         throw ValueError(format("Input parameter [%s] is invalid", ParamName.c_str()));
+     }
+diff --git a/src/CoolPropLib.cpp b/src/CoolPropLib.cpp
+index 445cb039..e29ff137 100644
+--- a/src/CoolPropLib.cpp
++++ b/src/CoolPropLib.cpp
+@@ -9,7 +9,7 @@
+ #include "CoolProp/CoolPropLib.h"
+ #include "CoolProp/FPUGuard.h"
+ #include "CoolProp/CoolProp.h"
+-#include "CoolProp/HumidAirProp.h"
++// #include "CoolProp/HumidAirProp.h"
+ #include "CoolProp/DataStructures.h"
+ #include "CoolProp/Exceptions.h"
+ #include <memory>
+@@ -20,7 +20,7 @@ using std::shared_ptr;
+ #include "Backends/Helmholtz/MixtureParameters.h"
+ 
+ #include <cstring>
+-#include <mutex>
++// #include <mutex>
+ 
+ void str2buf(const std::string& str, char* buf, int n) {
+     if (str.size() < static_cast<unsigned int>(n)) {
+@@ -456,59 +456,60 @@ EXPORT_CODE void CONVENTION apply_simple_mixing_rule(const char* identifier1, co
+         HandleException(errcode, message_buffer, buffer_length);
+     }
+ }
+-EXPORT_CODE double CONVENTION HAPropsSI(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
+-                                        double Prop3) {
+-    fpu_reset_guard guard;
+-    return HumidAir::HAPropsSI(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
+-}
+-EXPORT_CODE double CONVENTION cair_sat(double T) {
+-    fpu_reset_guard guard;
+-    return HumidAir::cair_sat(T);
+-}
+-EXPORT_CODE void CONVENTION hapropssi_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
+-                                       const char* Name3, const double* Prop3, double* output) {
+-    *output = HAPropsSI(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
+-}
+-EXPORT_CODE double CONVENTION HAProps(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
+-                                      double Prop3) {
+-    fpu_reset_guard guard;
+-    try {
+-        return HumidAir::HAProps(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
+-    } catch (std::exception& e) {
+-        CoolProp::set_error_string(e.what());
+-    } catch (...) {
+-        CoolProp::set_error_string("Undefined error");
+-    }
+-    return _HUGE;
+-}
+-EXPORT_CODE void CONVENTION haprops_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
+-                                     const char* Name3, const double* Prop3, double* output) {
+-    *output = HAProps(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
+-}
++// N2O-only: HumidAir API disabled.
++// EXPORT_CODE double CONVENTION HAPropsSI(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
++//                                         double Prop3) {
++//     fpu_reset_guard guard;
++//     return HumidAir::HAPropsSI(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
++// }
++// EXPORT_CODE double CONVENTION cair_sat(double T) {
++//     fpu_reset_guard guard;
++//     return HumidAir::cair_sat(T);
++// }
++// EXPORT_CODE void CONVENTION hapropssi_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
++//                                        const char* Name3, const double* Prop3, double* output) {
++//     *output = HAPropsSI(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
++// }
++// EXPORT_CODE double CONVENTION HAProps(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
++//                                       double Prop3) {
++//     fpu_reset_guard guard;
++//     try {
++//         return HumidAir::HAProps(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
++//     } catch (std::exception& e) {
++//         CoolProp::set_error_string(e.what());
++//     } catch (...) {
++//         CoolProp::set_error_string("Undefined error");
++//     }
++//     return _HUGE;
++// }
++// EXPORT_CODE void CONVENTION haprops_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
++//                                      const char* Name3, const double* Prop3, double* output) {
++//     *output = HAProps(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
++// }
+ class AbstractStateLibrary
+ {
+    private:
+     std::map<std::size_t, shared_ptr<CoolProp::AbstractState>> ASlibrary;
+     long next_handle = 0;
+-    std::mutex ASLib_mutex;
++    // std::mutex ASLib_mutex;
+ 
+    public:
+     AbstractStateLibrary() = default;
+     long add(const shared_ptr<CoolProp::AbstractState>& AS) {
+-        std::scoped_lock guard(ASLib_mutex);
++        // std::scoped_lock guard(ASLib_mutex);
+         ASlibrary.insert(std::pair<std::size_t, shared_ptr<CoolProp::AbstractState>>(this->next_handle, AS));
+         this->next_handle++;
+         return next_handle - 1;
+     }
+     void remove(long handle) {
+-        std::scoped_lock guard(ASLib_mutex);
++        // std::scoped_lock guard(ASLib_mutex);
+         std::size_t count_removed = ASlibrary.erase(handle);
+         if (count_removed != 1) {
+             throw CoolProp::HandleError("could not free handle");
+         }
+     }
+     shared_ptr<CoolProp::AbstractState>& get(long handle) {
+-        std::scoped_lock guard(ASLib_mutex);
++        // std::scoped_lock guard(ASLib_mutex);
+         auto it = ASlibrary.find(handle);
+         if (it != ASlibrary.end()) {
+             return it->second;
+diff --git a/src/FactoryOptions.cpp b/src/FactoryOptions.cpp
+index 5e7ea3fd..29dc1451 100644
+--- a/src/FactoryOptions.cpp
++++ b/src/FactoryOptions.cpp
+@@ -5,7 +5,7 @@
+ #include <cstddef>
+ #include <string>
+ 
+-#include "CoolProp/detail/filepaths.h"
++// #include "CoolProp/detail/filepaths.h"  // N2O-only: no filesystem
+ #include "CoolProp/Exceptions.h"
+ 
+ namespace CoolProp {
+@@ -35,15 +35,14 @@ FactoryOptionsParseResult parse_factory_options(const std::string& factory_strin
+     }
+ 
+     if (tail.front() == '@') {
+-        const std::string path = tail.substr(1);
+-        if (path.empty()) {
+-            throw ValueError("factory-string options: '@' indirection requires a non-empty path");
+-        }
+-        // get_file_contents() reads the file verbatim and throws on
+-        // read failure.  The path may contain '?' / '&' / spaces /
+-        // etc.  — no further parsing of the path string.
+-        result.options_json = get_file_contents(path.c_str());
+-        return result;
++        // N2O-only embedded build: no filesystem for @path options.
++        throw ValueError("factory-string options: '@' file indirection disabled in embedded build");
++        // const std::string path = tail.substr(1);
++        // if (path.empty()) {
++        //     throw ValueError("factory-string options: '@' indirection requires a non-empty path");
++        // }
++        // result.options_json = get_file_contents(path.c_str());
++        // return result;
+     }
+ 
+     result.options_json = std::move(tail);

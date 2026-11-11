@@ -485,10 +485,12 @@ class EquationOfState
     /// The shared_ptr is constructed lazily on first call and then shared among all
     /// copies of this EOS object, making CoolPropFluid copying O(1).
     std::shared_ptr<SuperAncillary_t> get_superanc() {
-        if (!superancillaries && !superancillaries_str.empty()) {
-            superancillaries = std::make_shared<SuperAncillary_t>(superancillaries_str);
-        }
-        return superancillaries;
+        // N2O-only embedded build ships no SUPERANCILLARY tables.
+        return nullptr;
+        // if (!superancillaries && !superancillaries_str.empty()) {
+        //     superancillaries = std::make_shared<SuperAncillary_t>(superancillaries_str);
+        // }
+        // return superancillaries;
     }
 
     /// Set the placeholder string for the superancillaries to allow for lazy construction, particularly important in debug builds

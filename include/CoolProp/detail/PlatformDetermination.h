@@ -13,7 +13,7 @@
 #elif __powerpc__
 #    define __ISPOWERPC__
 #else
-#    pragma error
+// #    pragma error
 #endif
 
 #endif

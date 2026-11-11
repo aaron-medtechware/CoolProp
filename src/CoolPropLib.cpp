@@ -9,7 +9,7 @@
 #include "CoolProp/CoolPropLib.h"
 #include "CoolProp/FPUGuard.h"
 #include "CoolProp/CoolProp.h"
-#include "CoolProp/HumidAirProp.h"
+// #include "CoolProp/HumidAirProp.h"
 #include "CoolProp/DataStructures.h"
 #include "CoolProp/Exceptions.h"
 #include <memory>
@@ -20,7 +20,7 @@ using std::shared_ptr;
 #include "Backends/Helmholtz/MixtureParameters.h"
 
 #include <cstring>
-#include <mutex>
+// #include <mutex>
 
 void str2buf(const std::string& str, char* buf, int n) {
     if (str.size() < static_cast<unsigned int>(n)) {
@@ -456,59 +456,60 @@ EXPORT_CODE void CONVENTION apply_simple_mixing_rule(const char* identifier1, co
         HandleException(errcode, message_buffer, buffer_length);
     }
 }
-EXPORT_CODE double CONVENTION HAPropsSI(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
-                                        double Prop3) {
-    fpu_reset_guard guard;
-    return HumidAir::HAPropsSI(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
-}
-EXPORT_CODE double CONVENTION cair_sat(double T) {
-    fpu_reset_guard guard;
-    return HumidAir::cair_sat(T);
-}
-EXPORT_CODE void CONVENTION hapropssi_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
-                                       const char* Name3, const double* Prop3, double* output) {
-    *output = HAPropsSI(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
-}
-EXPORT_CODE double CONVENTION HAProps(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
-                                      double Prop3) {
-    fpu_reset_guard guard;
-    try {
-        return HumidAir::HAProps(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
-    } catch (std::exception& e) {
-        CoolProp::set_error_string(e.what());
-    } catch (...) {
-        CoolProp::set_error_string("Undefined error");
-    }
-    return _HUGE;
-}
-EXPORT_CODE void CONVENTION haprops_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
-                                     const char* Name3, const double* Prop3, double* output) {
-    *output = HAProps(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
-}
+// N2O-only: HumidAir API disabled.
+// EXPORT_CODE double CONVENTION HAPropsSI(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
+//                                         double Prop3) {
+//     fpu_reset_guard guard;
+//     return HumidAir::HAPropsSI(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
+// }
+// EXPORT_CODE double CONVENTION cair_sat(double T) {
+//     fpu_reset_guard guard;
+//     return HumidAir::cair_sat(T);
+// }
+// EXPORT_CODE void CONVENTION hapropssi_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
+//                                        const char* Name3, const double* Prop3, double* output) {
+//     *output = HAPropsSI(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
+// }
+// EXPORT_CODE double CONVENTION HAProps(const char* Output, const char* Name1, double Prop1, const char* Name2, double Prop2, const char* Name3,
+//                                       double Prop3) {
+//     fpu_reset_guard guard;
+//     try {
+//         return HumidAir::HAProps(std::string(Output), std::string(Name1), Prop1, std::string(Name2), Prop2, std::string(Name3), Prop3);
+//     } catch (std::exception& e) {
+//         CoolProp::set_error_string(e.what());
+//     } catch (...) {
+//         CoolProp::set_error_string("Undefined error");
+//     }
+//     return _HUGE;
+// }
+// EXPORT_CODE void CONVENTION haprops_(const char* Output, const char* Name1, const double* Prop1, const char* Name2, const double* Prop2,
+//                                      const char* Name3, const double* Prop3, double* output) {
+//     *output = HAProps(Output, Name1, *Prop1, Name2, *Prop2, Name3, *Prop3);
+// }
 class AbstractStateLibrary
 {
    private:
     std::map<std::size_t, shared_ptr<CoolProp::AbstractState>> ASlibrary;
     long next_handle = 0;
-    std::mutex ASLib_mutex;
+    // std::mutex ASLib_mutex;
 
    public:
     AbstractStateLibrary() = default;
     long add(const shared_ptr<CoolProp::AbstractState>& AS) {
-        std::scoped_lock guard(ASLib_mutex);
+        // std::scoped_lock guard(ASLib_mutex);
         ASlibrary.insert(std::pair<std::size_t, shared_ptr<CoolProp::AbstractState>>(this->next_handle, AS));
         this->next_handle++;
         return next_handle - 1;
     }
     void remove(long handle) {
-        std::scoped_lock guard(ASLib_mutex);
+        // std::scoped_lock guard(ASLib_mutex);
         std::size_t count_removed = ASlibrary.erase(handle);
         if (count_removed != 1) {
             throw CoolProp::HandleError("could not free handle");
         }
     }
     shared_ptr<CoolProp::AbstractState>& get(long handle) {
-        std::scoped_lock guard(ASLib_mutex);
+        // std::scoped_lock guard(ASLib_mutex);
         auto it = ASlibrary.find(handle);
         if (it != ASlibrary.end()) {
             return it->second;

@@ -36,7 +36,7 @@ Subsequent edits by Ian Bell
 #include <atomic>
 #include <cmath>
 #include <cstdio>
-#include <mutex>
+// #include <mutex>
 #include <set>
 #include <utility>
 #include <optional>
@@ -871,7 +871,7 @@ class SuperAncillary
     /// (m_hL/m_hV/m_sL/m_sV/m_uL/m_uV/m_invlnp). The fixed approximations
     /// (m_rhoL/m_rhoV/m_p) and the const data are read-only after construction
     /// and need no synchronization. See #2773 review C2.
-    mutable std::mutex m_lazy_build_mutex;
+    // mutable std::mutex m_lazy_build_mutex;
 
     /// Stamp recording the IdealHelmholtzEnthalpyEntropyOffset (a1, a2) that
     /// the cached caloric superancillaries (m_hL/m_hV/m_sL/m_sV) were built
@@ -998,7 +998,7 @@ class SuperAncillary
     /// (e.g. if the prefactor or Core offset ever becomes runtime-mutable),
     /// but no current code calls it. See #2773.
     void clear_caloric_variables() {
-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
         m_hL.reset();
         m_hV.reset();
         m_sL.reset();
@@ -1024,7 +1024,7 @@ class SuperAncillary
         // optional::has_value() is technically a data race per the C++
         // standard. An uncontended mutex acquire is ~20 ns — much less than a
         // single EOS-side h/s/u evaluation.
-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
         if (m_hL.has_value() && m_hV.has_value() && m_sL.has_value() && m_sV.has_value() && m_uL.has_value() && m_uV.has_value()) {
             return;  // already built; stamp captured at first build, never invalidated
         }
@@ -1041,7 +1041,7 @@ class SuperAncillary
     /// Get the (a1, a2) stamp recorded when the caloric superancillaries were
     /// first built. Returns nullopt if not yet built.
     std::optional<std::pair<double, double>> get_caloric_alpha0_stamp() const {
-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
         return m_caloric_alpha0_stamp;
     }
 
@@ -1076,7 +1076,7 @@ class SuperAncillary
     /// that guards H/S/U construction so concurrent first-call accesses
     /// from threads on different HEOS instances of the same fluid don't race.
     const auto& get_invlnp() {
-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
         if (!m_invlnp) {
             // Degree of expansion is the same as
             auto Ndegree = m_p.get_expansions()[0].coeff().size() - 1;
@@ -1118,7 +1118,7 @@ class SuperAncillary
      hold the mutex (e.g. ensure_HS_under_lock) must use add_variable_locked.
      */
     void add_variable(char var, const std::function<double(double, double)>& caller) {
-        std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
+        // std::lock_guard<std::mutex> lk(m_lazy_build_mutex);
         add_variable_locked(var, caller);
     }
 

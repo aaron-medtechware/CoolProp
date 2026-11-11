@@ -39,21 +39,21 @@
 #include <string>
 #include <locale>
 #include <atomic>
-#include <mutex>
-#include <thread>
+// #include <mutex>
+// #include <thread>
 #include "CoolProp/detail/tools.h"
 #include "CoolProp/numerics/Solvers.h"
 #include "CoolProp/numerics/MatrixMath.h"
 #include "CoolProp/detail/json.h"
 #include "Backends/Helmholtz/Fluids/FluidLibrary.h"
-#include "Backends/Incompressible/IncompressibleLibrary.h"
-#include "Backends/Incompressible/IncompressibleBackend.h"
+// #include "Backends/Incompressible/IncompressibleLibrary.h"
+// #include "Backends/Incompressible/IncompressibleBackend.h"
 #include "Backends/Helmholtz/HelmholtzEOSBackend.h"
 #include "Backends/Helmholtz/MixtureParameters.h"
 #include "CoolProp/DataStructures.h"
-#include "Backends/REFPROP/REFPROPMixtureBackend.h"
-#include "Backends/Cubics/CubicsLibrary.h"
-#include "Backends/PCSAFT/PCSAFTLibrary.h"
+// #include "Backends/REFPROP/REFPROPMixtureBackend.h"
+// #include "Backends/Cubics/CubicsLibrary.h"
+// #include "Backends/PCSAFT/PCSAFTLibrary.h"
 
 #if defined(ENABLE_CATCH)
 #    include <catch2/catch_all.hpp>
@@ -84,7 +84,7 @@ static std::atomic<int> debug_level{0};
 // the pre-#3146 behaviour -- but no longer UB.)
 static std::string error_string;
 static std::string warning_string;
-static std::mutex message_mutex;
+// static std::mutex message_mutex;
 
 void set_debug_level(int level) {
     debug_level = level;
@@ -94,15 +94,15 @@ int get_debug_level() {
 }
 
 //// This is very hacky, but pull the git revision from the file
-#include "gitrevision.h"  // Contents are like "std::string gitrevision = "aa121435436ggregrea4t43t433";"
-#include "cpversion.h"    // Contents are like "char version [] = "2.5";"
+// #include "gitrevision.h"  // Contents are like "std::string gitrevision = "aa121435436ggregrea4t43t433";"
+// #include "cpversion.h"    // Contents are like "char version [] = "2.5";"
 
 void set_warning_string(const std::string& warning) {
-    std::scoped_lock lock(message_mutex);
+    // std::scoped_lock lock(message_mutex);
     warning_string = warning;
 }
 void set_error_string(const std::string& error) {
-    std::scoped_lock lock(message_mutex);
+    // std::scoped_lock lock(message_mutex);
     error_string = error;
 }
 
@@ -704,37 +704,38 @@ double PropsSI(const std::string& Output, const std::string& Name1, double Prop1
 }
 
 bool add_fluids_as_JSON(const std::string& backend, const std::string& fluidstring) {
-    if (backend == "SRK" || backend == "PR") {
-        CubicLibrary::add_fluids_as_JSON(fluidstring);
-        return true;
-    } else if (backend == "HEOS") {
+    // N2O-only build: HEOS is the only supported backend for fluid injection.
+    // if (backend == "SRK" || backend == "PR") {
+    //     CubicLibrary::add_fluids_as_JSON(fluidstring);
+    //     return true;
+    // } else
+    if (backend == "HEOS") {
         JSONFluidLibrary::add_many(fluidstring);
         return true;
-    } else if (backend == "PCSAFT") {
-        PCSAFTLibrary::add_fluids_as_JSON(fluidstring);
-        return true;
-    } else if (backend == "INCOMP") {
-        // Accept either a single fluid object or an array of them, matching
-        // how the embedded incompressible library JSON is structured (#2384)
-        nlohmann::json j = cpjson::parse(fluidstring);
-        if (j.is_array()) {
-            get_incompressible_library().add_many(j);
-        } else {
-            get_incompressible_library().add_one(j);
-        }
-        return true;
-    } else {
-        throw ValueError(format("You have provided an invalid backend [%s] to add_fluids_as_JSON; valid options are SRK, PR, HEOS, PCSAFT, INCOMP",
-                                backend.c_str()));
+    }
+    // else if (backend == "PCSAFT") {
+    //     PCSAFTLibrary::add_fluids_as_JSON(fluidstring);
+    //     return true;
+    // } else if (backend == "INCOMP") {
+    //     nlohmann::json j = cpjson::parse(fluidstring);
+    //     if (j.is_array()) {
+    //         get_incompressible_library().add_many(j);
+    //     } else {
+    //         get_incompressible_library().add_one(j);
+    //     }
+    //     return true;
+    // }
+    else {
+        throw ValueError(format("You have provided an invalid backend [%s] to add_fluids_as_JSON; valid options are HEOS", backend.c_str()));
     }
 }
 
 // Simple function to check if REFPROPMixtureBackend is supported in this environment, so that we can skip
 // tests that require it in environments where it is not supported (e.g., CI builds on GitHub)
 void Skip_if_No_REFPROP() {
-#if defined(ENABLE_CATCH)
-    if (!CoolProp::REFPROPMixtureBackend::REFPROP_supported()) SKIP("Skipping: REFPROP not supported in this environment.");
-#endif
+// #if defined(ENABLE_CATCH)
+//     if (!CoolProp::REFPROPMixtureBackend::REFPROP_supported()) SKIP("Skipping: REFPROP not supported in this environment.");
+// #endif
     // Otherwise, in non-testing environments, this is a no-op.
 }
 
@@ -1011,25 +1012,25 @@ void set_reference_stateS(const std::string& FluidName, const std::string& refer
     extract_backend_families(backend.substr(0, backend.find('?')), family, second_family);
     const bool single_family = (backend.find('&') == std::string::npos);
     if (single_family && family == REFPROP_BACKEND_FAMILY) {
-
-        int ierr = 0, ixflag = 1;
-        double h0 = 0, s0 = 0, t0 = 0, p0 = 0;
-        std::array<char, 255> herr{};
-        std::array<char, 4> hrf{};
-        double x0[1] = {1};
-        const char* refstate = reference_state.c_str();
-        if (strlen(refstate) > 3) {
-            if (reference_state == "ASHRAE") {
-                strncpy(hrf.data(), "ASH", hrf.size() - 1);
-                hrf[hrf.size() - 1] = '\0';
-            } else {
-                throw ValueError(format("Reference state string [%s] is more than 3 characters long", reference_state.c_str()));
-            }
-        } else {
-            strncpy(hrf.data(), refstate, hrf.size() - 1);
-            hrf[hrf.size() - 1] = '\0';
-        }
-        REFPROP_SETREF(hrf.data(), ixflag, x0, h0, s0, t0, p0, ierr, herr.data(), 3, 255);
+        throw ValueError("REFPROP backend disabled in N2O-only embedded build");
+        // int ierr = 0, ixflag = 1;
+        // double h0 = 0, s0 = 0, t0 = 0, p0 = 0;
+        // std::array<char, 255> herr{};
+        // std::array<char, 4> hrf{};
+        // double x0[1] = {1};
+        // const char* refstate = reference_state.c_str();
+        // if (strlen(refstate) > 3) {
+        //     if (reference_state == "ASHRAE") {
+        //         strncpy(hrf.data(), "ASH", hrf.size() - 1);
+        //         hrf[hrf.size() - 1] = '\0';
+        //     } else {
+        //         throw ValueError(format("Reference state string [%s] is more than 3 characters long", reference_state.c_str()));
+        //     }
+        // } else {
+        //     strncpy(hrf.data(), refstate, hrf.size() - 1);
+        //     hrf[hrf.size() - 1] = '\0';
+        // }
+        // REFPROP_SETREF(hrf.data(), ixflag, x0, h0, s0, t0, p0, ierr, herr.data(), 3, 255);
     } else if (backend == "?" || (single_family && family == HEOS_BACKEND_FAMILY)) {
         CoolProp::HelmholtzEOSMixtureBackend HEOS(std::vector<std::string>(1, fluid));
         if (reference_state == "IIR") {
@@ -1176,41 +1177,48 @@ void set_reference_stateD(const std::string& FluidName, double T, double rhomola
 
 std::string get_global_param_string(const std::string& ParamName) {
     if (ParamName == "version") {
-        return version;
+        // return version;
+        return "X.X";
     } else if (ParamName == "gitrevision") {
-        return gitrevision;
+        // return gitrevision;
+        return "1234";
     } else if (ParamName == "errstring") {
-        std::scoped_lock lock(message_mutex);
+        // std::scoped_lock lock(message_mutex);
         std::string temp = error_string;
         error_string = "";
         return temp;
     } else if (ParamName == "warnstring") {
-        std::scoped_lock lock(message_mutex);
+        // std::scoped_lock lock(message_mutex);
         std::string temp = warning_string;
         warning_string = "";
         return temp;
     } else if (ParamName == "FluidsList" || ParamName == "fluids_list" || ParamName == "fluidslist") {
         return get_fluid_list();
-    } else if (ParamName == "incompressible_list_pure") {
-        return get_incompressible_list_pure();
-    } else if (ParamName == "incompressible_list_solution") {
-        return get_incompressible_list_solution();
-    } else if (ParamName == "mixture_binary_pairs_list") {
-        return get_csv_mixture_binary_pairs();
-    } else if (ParamName == "parameter_list") {
+    }
+    // N2O-only: non-HEOS global param queries are disabled.
+    // else if (ParamName == "incompressible_list_pure") {
+    //     return get_incompressible_list_pure();
+    // } else if (ParamName == "incompressible_list_solution") {
+    //     return get_incompressible_list_solution();
+    // } else if (ParamName == "mixture_binary_pairs_list") {
+    //     return get_csv_mixture_binary_pairs();
+    // } else if (ParamName == "parameter_list") {
+    //     return get_csv_parameter_list();
+    // } else if (ParamName == "predefined_mixtures") {
+    //     return get_csv_predefined_mixtures();
+    // } else if (ParamName == "HOME") {
+    //     return get_home_dir();
+    // } else if (ParamName == "REFPROP_version") {
+    //     return REFPROPMixtureBackend::version();
+    // } else if (ParamName == "cubic_fluids_schema") {
+    //     return std::string{CoolProp::CubicLibrary::get_cubic_fluids_schema()};
+    // } else if (ParamName == "cubic_fluids_list") {
+    //     return CoolProp::CubicLibrary::get_cubic_fluids_list();
+    // } else if (ParamName == "pcsaft_fluids_schema") {
+    //     return std::string{CoolProp::PCSAFTLibrary::get_pcsaft_fluids_schema()};
+    // }
+    else if (ParamName == "parameter_list") {
         return get_csv_parameter_list();
-    } else if (ParamName == "predefined_mixtures") {
-        return get_csv_predefined_mixtures();
-    } else if (ParamName == "HOME") {
-        return get_home_dir();
-    } else if (ParamName == "REFPROP_version") {
-        return REFPROPMixtureBackend::version();
-    } else if (ParamName == "cubic_fluids_schema") {
-        return std::string{CoolProp::CubicLibrary::get_cubic_fluids_schema()};
-    } else if (ParamName == "cubic_fluids_list") {
-        return CoolProp::CubicLibrary::get_cubic_fluids_list();
-    } else if (ParamName == "pcsaft_fluids_schema") {
-        return std::string{CoolProp::PCSAFTLibrary::get_pcsaft_fluids_schema()};
     } else {
         throw ValueError(format("Input parameter [%s] is invalid", ParamName.c_str()));
     }

@@ -27,10 +27,10 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
-#include <valijson/adapters/nlohmann_json_adapter.hpp>
-#include <valijson/schema.hpp>
-#include <valijson/schema_parser.hpp>
-#include <valijson/validator.hpp>
+// #include <valijson/adapters/nlohmann_json_adapter.hpp>
+// #include <valijson/schema.hpp>
+// #include <valijson/schema_parser.hpp>
+// #include <valijson/validator.hpp>
 
 namespace cpjson {
 
@@ -183,6 +183,7 @@ enum schema_validation_code
 /// schema string. On a validation failure, `errstr` receives a
 /// human-comprehensible description. Never propagates a raw nlohmann or
 /// Valijson exception to the caller.
+/*
 inline schema_validation_code validate_schema(std::string_view schemaJson, std::string_view inputJson, std::string& errstr) {
     nlohmann::json schemaDoc;
     try {
@@ -231,6 +232,7 @@ inline schema_validation_code validate_schema(std::string_view schemaJson, std::
     }
     return SCHEMA_VALIDATION_OK;
 }
+*/
 
 }  // namespace cpjson
 

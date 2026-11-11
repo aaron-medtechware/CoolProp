@@ -7,17 +7,17 @@
 #include <system_error>
 #include <vector>
 
-#if !defined(NO_FMTLIB)
-#    ifndef FMT_HEADER_ONLY
-#        define FMT_HEADER_ONLY
-#    endif
-#    include "fmt/format.h"  // For addition of the string formatting functions and macros from fmtlib
-#    include "fmt/printf.h"  // For sprintf
-#    undef FMT_HEADER_ONLY
-#else
+// #if !defined(NO_FMTLIB)
+// #    ifndef FMT_HEADER_ONLY
+// #        define FMT_HEADER_ONLY
+// #    endif
+// #    include "fmt/format.h"  // For addition of the string formatting functions and macros from fmtlib
+// #    include "fmt/printf.h"  // For sprintf
+// #    undef FMT_HEADER_ONLY
+// #else
 #    include <vector>
 #    include <string>
-#endif
+// #endif
 
 #include "CoolProp/Exceptions.h"
 
@@ -71,20 +71,20 @@ inline bool endswith(const std::string& s1, const std::string& s2) {
     return lhs == rhs;
 }
 
-#if defined(NO_FMTLIB)
+// #if defined(NO_FMTLIB)
 // Missing string formatting function, this old guy is needed for ancient gcc compilers on PowerPC for VxWorks
 inline std::string format(const char* fmt, ...);
-#elif FMT_VERSION >= 50000
-template <typename... Args>
-inline std::string format(const char* format_str, const Args&... args) {
-    return fmt::sprintf(format_str, args...);
-}
-#else
-inline std::string format(const char* format, fmt::ArgList args) {
-    return fmt::sprintf(format, args);
-}
-FMT_VARIADIC(std::string, format, const char*)
-#endif
+// #elif FMT_VERSION >= 50000
+// template <typename... Args>
+// inline std::string format(const char* format_str, const Args&... args) {
+//     return fmt::sprintf(format_str, args...);
+// }
+// #else
+// inline std::string format(const char* format, fmt::ArgList args) {
+//     return fmt::sprintf(format, args);
+// }
+// FMT_VARIADIC(std::string, format, const char*)
+// #endif
 
 // Missing string split - like in Python
 std::vector<std::string> strsplit(const std::string& s, char del);

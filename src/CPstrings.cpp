@@ -1,5 +1,6 @@
 #include "CoolProp/detail/strings.h"
 #include <cctype>
+#include <cstdarg>
 #include <memory>
 using std::shared_ptr;
 #include <vector>

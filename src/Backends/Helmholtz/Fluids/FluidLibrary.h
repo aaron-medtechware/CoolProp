@@ -3,7 +3,7 @@
 #define FLUIDLIBRARY_H
 
 #include "CoolProp/CoolPropFluid.h"
-#include "CoolProp/expression/ExpressionBlock.h"
+// #include "CoolProp/expression/ExpressionBlock.h"  // N2O-only
 
 #include "CoolProp/detail/json.h"
 #include "FluidLibraryFactories.h"
@@ -13,8 +13,8 @@ using std::shared_ptr;
 #include <map>
 #include <algorithm>
 #include "CoolProp/Configuration.h"
-#include "Backends/Cubics/CubicsLibrary.h"
-#include "Backends/Cubics/GeneralizedCubic.h"
+// #include "Backends/Cubics/CubicsLibrary.h"  // N2O-only
+// #include "Backends/Cubics/GeneralizedCubic.h"
 #include "CoolProp/fluids/Helmholtz.h"
 
 namespace CoolProp {
@@ -428,9 +428,9 @@ class JSONFluidLibrary
         EOS.ptriple = cpjson::get_double(satminL_state, "p");
         EOS.Ttriple = EOS.limits.Tmin;
 
-        // BibTex keys
-        EOS.BibTeX_EOS = cpjson::get_string(EOS_json, "BibTeX_EOS");
-        EOS.BibTeX_CP0 = cpjson::get_string(EOS_json, "BibTeX_CP0");
+        // BibTex keys (optional on embedded N2O builds that strip literature metadata)
+        EOS.BibTeX_EOS = EOS_json.contains("BibTeX_EOS") ? cpjson::get_string(EOS_json, "BibTeX_EOS") : "";
+        EOS.BibTeX_CP0 = EOS_json.contains("BibTeX_CP0") ? cpjson::get_string(EOS_json, "BibTeX_CP0") : "";
 
         if (EOS_json.contains("SUPERANCILLARY")) {
             if (getenv("COOLPROP_DISABLE_SUPERANCILLARIES_ENTIRELY")) {
@@ -505,11 +505,9 @@ class JSONFluidLibrary
     // The dump() round-trip is what keeps that single definition text-based (and so
     // nlohmann-free in the wrapper TUs); it runs once per expression block at fluid
     // load, and nlohmann round-trips doubles exactly.
-    static inline CoolProp::ExpressionData parse_expression_block(const nlohmann::json& j, const std::string& fluidname) {
-        CoolProp::expression::Program prog = CoolProp::expression::compile_block(j.dump(), "fluid " + fluidname);
-        CoolProp::ExpressionData data;
-        data.correlation = std::make_shared<CoolProp::expression::ExpressionCorrelation>(std::move(prog));
-        return data;
+    static inline CoolProp::ExpressionData parse_expression_block(const nlohmann::json& /*j*/, const std::string& /*fluidname*/) {
+        // N2O has no TRANSPORT expression blocks; keep a throw if ever hit.
+        throw ValueError("expression transport correlations disabled in N2O-only embedded build");
     }
 
     /// Parse the transport properties
@@ -1327,95 +1325,9 @@ class JSONFluidLibrary
         if (it != string_to_index_map.end()) {
             return get(it->second);
         } else {
-            // Here we check for the use of a cubic Helmholtz energy transformation for a multi-fluid model
-            std::vector<std::string> endings;
-            endings.emplace_back("-SRK");
-            endings.emplace_back("-PengRobinson");
-            for (const auto& ending : endings) {
-                if (endswith(key, ending)) {
-                    std::string used_name = key.substr(0, key.size() - ending.size());
-                    it = string_to_index_map.find(used_name);
-                    if (it != string_to_index_map.end()) {
-                        // We found the name of the fluid within the library of multiparameter
-                        // Helmholtz-explicit models.  We will load its parameters from the
-                        // multiparameter EOS
-                        //
-                        CoolPropFluid fluid = get(it->second);
-                        // Remove all the residual contributions to the Helmholtz energy
-                        fluid.EOSVector[0].alphar.empty_the_EOS();
-                        // Get the parameters for the cubic EOS
-                        CoolPropDbl Tc = fluid.EOSVector[0].reduce.T;
-                        CoolPropDbl pc = fluid.EOSVector[0].reduce.p;
-                        CoolPropDbl rhomolarc = fluid.EOSVector[0].reduce.rhomolar;
-                        CoolPropDbl acentric = fluid.EOSVector[0].acentric;
-                        CoolPropDbl R = 8.3144598;  // fluid.EOSVector[0].R_u;
-                        // Set the cubic contribution to the residual Helmholtz energy
-                        shared_ptr<AbstractCubic> ac;
-                        if (ending == "-SRK") {
-                            ac = std::make_shared<SRK>(Tc, pc, acentric, R);
-                        } else if (ending == "-PengRobinson") {
-                            ac = std::make_shared<PengRobinson>(Tc, pc, acentric, R);
-                        } else {
-                            throw CoolProp::ValueError(format("Unable to match this ending [%s]", ending.c_str()));
-                        }
-                        ac->set_Tr(Tc);
-                        ac->set_rhor(rhomolarc);
-                        fluid.EOSVector[0].alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
-                        return fluid;
-                    } else {
-                        // Let's look in the library of cubic EOS
-                        CubicLibrary::CubicsValues vals = CubicLibrary::get_cubic_values(used_name);
-                        // Set the cubic contribution to the residual Helmholtz energy
-                        shared_ptr<AbstractCubic> ac;
-                        if (ending == "-SRK") {
-                            ac = std::make_shared<SRK>(vals.Tc, vals.pc, vals.acentric, get_config_double(R_U_CODATA));
-                        } else if (ending == "-PengRobinson") {
-                            ac = std::make_shared<PengRobinson>(vals.Tc, vals.pc, vals.acentric, get_config_double(R_U_CODATA));
-                        } else {
-                            throw CoolProp::ValueError(format("Unable to match this ending [%s]", ending.c_str()));
-                        }
-                        ac->set_Tr(vals.Tc);
-                        if (vals.rhomolarc > 0) {
-                            ac->set_rhor(vals.rhomolarc);
-                        } else {
-                            // Curve fit from all the pure fluids in CoolProp (thanks to recommendation of A. Kazakov)
-                            double v_c_Lmol = 2.14107171795 * (vals.Tc / vals.pc * 1000) + 0.00773144012514;  // [L/mol]
-                            ac->set_rhor(1 / (v_c_Lmol / 1000.0));
-                        }
-                        // alpha_coeffs has exactly 3 entries for these types; the cubic schema enforces it
-                        if (vals.alpha_type == "Twu") {
-                            std::vector<double>& c = vals.alpha_coeffs;
-                            ac->set_C_Twu(0, c[0], c[1], c[2]);
-                        } else if (vals.alpha_type == "Mathias-Copeman" || vals.alpha_type == "MathiasCopeman") {
-                            std::vector<double>& c = vals.alpha_coeffs;
-                            ac->set_C_MC(0, c[0], c[1], c[2]);
-                        }
-                        CoolPropFluid fluid;
-                        fluid.CAS = vals.CAS;
-                        EquationOfState E;
-                        // Populate the scalars this branch needs; without molar_mass
-                        // every mass-basis query on the fluid is silently wrong,
-                        // because it feeds all of mass_to_molar_inputs.
-                        E.molar_mass = vals.molemass;
-                        E.acentric = vals.acentric;
-                        // Same R the cubic above was built with; R_u defaults to 0, which
-                        // zeroed p and every other R-scaled property on this path
-                        E.R_u = get_config_double(R_U_CODATA);
-                        E.sat_min_liquid.T = _HUGE;
-                        E.sat_min_liquid.p = _HUGE;
-                        E.reduce.T = vals.Tc;
-                        E.reduce.p = vals.pc;
-                        E.reduce.rhomolar = ac->get_rhor();
-                        fluid.EOSVector.push_back(E);
-                        fluid.EOS().alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
-                        fluid.EOS().alpha0 = vals.alpha0;
-                        fluid.crit.T = vals.Tc;
-                        fluid.crit.p = vals.pc;
-                        fluid.crit.rhomolar = ac->get_rhor();
-
-                        return fluid;
-                    }
-                }
+            // N2O-only: cubic Helmholtz transforms (-SRK / -PengRobinson) disabled.
+            if (endswith(key, "-SRK") || endswith(key, "-PengRobinson")) {
+                throw ValueError("cubic fluid transforms disabled in N2O-only embedded build");
             }
             throw ValueError(format("key [%s] was not found in string_to_index_map in JSONFluidLibrary", key.c_str()));
         }

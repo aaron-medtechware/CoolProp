@@ -26,25 +26,25 @@
 #include "HelmholtzEOSMixtureBackend.h"
 #include "HelmholtzEOSBackend.h"
 #include "Fluids/FluidLibrary.h"
-#include "Backends/Cubics/GeneralizedCubic.h"
+// #include "Backends/Cubics/GeneralizedCubic.h"  // N2O-only: cubic EOS swap disabled
 #include "CoolProp/numerics/Solvers.h"
 #include "CoolProp/numerics/MatrixMath.h"
 #include "boost/math/tools/toms748_solve.hpp"
 #include "VLERoutines.h"
 #include "FlashRoutines.h"
-#include "TransportRoutines.h"
+// #include "TransportRoutines.h"  // N2O-only: transport stubs below
 #include "MixtureDerivatives.h"
 #include "PhaseEnvelopeRoutines.h"
 #include "ReducingFunctions.h"
 #include "MixtureParameters.h"
-#include "CoolProp/fluids/IdealCurves.h"
+// #include "CoolProp/fluids/IdealCurves.h"  // N2O-only
 #include "MixtureParameters.h"
-#include "CoolProp/expression/ExpressionCorrelation.h"
+// #include "CoolProp/expression/ExpressionCorrelation.h"
 #include "ChebDensitySolver.h"
 #include <atomic>
 #include <cstdlib>
 #include <map>
-#include <mutex>
+// #include <mutex>
 #include <random>
 #include <sstream>
 
@@ -524,64 +524,15 @@ void HelmholtzEOSMixtureBackend::set_binary_interaction_string(const std::size_t
     }
 };
 
-void HelmholtzEOSMixtureBackend::calc_change_EOS(const std::size_t i, const std::string& EOS_name) {
-    cheb_density_resolved = false;  // a different EOS: resolve the Chebyshev solver again
-
-    if (i < components.size()) {
-        CoolPropFluid& fluid = components[i];
-        EquationOfState& EOS = fluid.EOSVector[0];
-
-        if (EOS_name == "SRK" || EOS_name == "Peng-Robinson") {
-
-            // Get the parameters for the cubic EOS
-            CoolPropDbl Tc = EOS.reduce.T;
-            CoolPropDbl pc = EOS.reduce.p;
-            CoolPropDbl rhomolarc = EOS.reduce.rhomolar;
-            CoolPropDbl acentric = EOS.acentric;
-            CoolPropDbl R = 8.3144598;
-
-            // Remove the residual part
-            EOS.alphar.empty_the_EOS();
-            // Set the contribution
-            shared_ptr<AbstractCubic> ac;
-            if (EOS_name == "SRK") {
-                ac = std::make_shared<SRK>(Tc, pc, acentric, R);
-            } else {
-                ac = std::make_shared<PengRobinson>(Tc, pc, acentric, R);
-            }
-            ac->set_Tr(Tc);
-            ac->set_rhor(rhomolarc);
-            EOS.alphar.cubic = ResidualHelmholtzGeneralizedCubic(ac);
-        } else if (EOS_name == "XiangDeiters") {
-
-            // Get the parameters for the EOS
-            CoolPropDbl Tc = EOS.reduce.T;
-            CoolPropDbl pc = EOS.reduce.p;
-            CoolPropDbl rhomolarc = EOS.reduce.rhomolar;
-            CoolPropDbl acentric = EOS.acentric;
-            CoolPropDbl R = 8.3144598;
-
-            // Remove the residual part
-            EOS.alphar.empty_the_EOS();
-            // Set the Xiang & Deiters contribution
-            EOS.alphar.XiangDeiters = ResidualHelmholtzXiangDeiters(Tc, pc, rhomolarc, acentric, R);
-        } else {
-            throw ValueError(format("EOS name [%s] is invalid; valid options are SRK, Peng-Robinson, XiangDeiters", EOS_name.c_str()));
-        }
-    } else {
-        throw ValueError(format("Index [%d] is invalid", i));
-    }
-    // Now do the same thing to the saturated liquid and vapor instances if possible
-    if (this->SatL) SatL->change_EOS(i, EOS_name);
-    if (this->SatV) SatV->change_EOS(i, EOS_name);
+void HelmholtzEOSMixtureBackend::calc_change_EOS(const std::size_t /*i*/, const std::string& /*EOS_name*/) {
+    throw NotImplementedError("calc_change_EOS disabled in N2O-only embedded build");
 }
-void HelmholtzEOSMixtureBackend::calc_phase_envelope(const std::string& type) {
-    // Clear the phase envelope data
-    PhaseEnvelope = PhaseEnvelopeData();
-    // Build the phase envelope
-    PhaseEnvelopeRoutines::build(*this, type);
-    // Finalize the phase envelope
-    PhaseEnvelopeRoutines::finalize(*this);
+void HelmholtzEOSMixtureBackend::calc_phase_envelope(const std::string& /*type*/) {
+    // N2O-only: phase envelope construction disabled (saves flash).
+    throw NotImplementedError("phase envelope disabled in N2O-only embedded build");
+    // PhaseEnvelope = PhaseEnvelopeData();
+    // PhaseEnvelopeRoutines::build(*this, type);
+    // PhaseEnvelopeRoutines::finalize(*this);
 };
 void HelmholtzEOSMixtureBackend::set_mixture_parameters() {
     // Build the matrix of binary-pair reducing functions
@@ -757,454 +708,33 @@ CoolPropDbl HelmholtzEOSMixtureBackend::calc_surface_tension() {
     }
 }
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_dilute() {
-    if (is_pure_or_pseudopure) {
-        CoolPropDbl eta_dilute = NAN;
-        switch (components[0].transport.viscosity_dilute.type) {
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_KINETIC_THEORY:
-                eta_dilute = TransportRoutines::viscosity_dilute_kinetic_theory(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_COLLISION_INTEGRAL:
-                eta_dilute = TransportRoutines::viscosity_dilute_collision_integral(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_POWERS_OF_T:
-                eta_dilute = TransportRoutines::viscosity_dilute_powers_of_T(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_POWERS_OF_TR:
-                eta_dilute = TransportRoutines::viscosity_dilute_powers_of_Tr(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_COLLISION_INTEGRAL_POWERS_OF_TSTAR:
-                eta_dilute = TransportRoutines::viscosity_dilute_collision_integral_powers_of_T(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_ETHANE:
-                eta_dilute = TransportRoutines::viscosity_dilute_ethane(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_CYCLOHEXANE:
-                eta_dilute = TransportRoutines::viscosity_dilute_cyclohexane(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_CO2_LAESECKE_JPCRD_2017:
-                eta_dilute = TransportRoutines::viscosity_dilute_CO2_LaeseckeJPCRD2017(*this);
-                break;
-            case ViscosityDiluteVariables::VISCOSITY_DILUTE_EXPRESSION:
-                if (!components[0].transport.viscosity_dilute.expression_data.correlation)
-                    throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
-                eta_dilute = components[0].transport.viscosity_dilute.expression_data.correlation->eval(*this);
-                break;
-            default:
-                throw ValueError(
-                  format("dilute viscosity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
-        }
-        return eta_dilute;
-    } else {
-        throw NotImplementedError(format("dilute viscosity not implemented for mixtures"));
-    }
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background() {
-    CoolPropDbl eta_dilute = calc_viscosity_dilute(), initial_density = 0, residual = 0;
-    return calc_viscosity_background(eta_dilute, initial_density, residual);
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
-CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background(CoolPropDbl eta_dilute, CoolPropDbl& initial_density, CoolPropDbl& residual) {
-
-    switch (components[0].transport.viscosity_initial.type) {
-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_RAINWATER_FRIEND: {
-            CoolPropDbl B_eta_initial = TransportRoutines::viscosity_initial_density_dependence_Rainwater_Friend(*this);
-            CoolPropDbl rho = rhomolar();
-            initial_density = eta_dilute * B_eta_initial * rho;  //TODO: Check units once AMTG
-            break;
-        }
-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_EMPIRICAL: {
-            initial_density = TransportRoutines::viscosity_initial_density_dependence_empirical(*this);
-            break;
-        }
-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_EXPRESSION: {
-            // The formula yields this stage's contribution directly, in Pa-s -- the
-            // same convention as the EMPIRICAL form and as the other four stages.
-            // It is NOT the Rainwater-Friend B_eta, which the host would have to
-            // scale by eta_dilute*rho; the dilute viscosity is a within-correlation
-            // intermediate and is deliberately not exposed to the DSL.
-            if (!components[0].transport.viscosity_initial.expression_data.correlation)
-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
-            initial_density = components[0].transport.viscosity_initial.expression_data.correlation->eval(*this);
-            break;
-        }
-        case ViscosityInitialDensityVariables::VISCOSITY_INITIAL_DENSITY_NOT_SET: {
-            break;
-        }
-    }
-
-    // Higher order terms
-    switch (components[0].transport.viscosity_higher_order.type) {
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_BATSCHINKI_HILDEBRAND:
-            residual = TransportRoutines::viscosity_higher_order_modified_Batschinski_Hildebrand(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_FRICTION_THEORY:
-            residual = TransportRoutines::viscosity_higher_order_friction_theory(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HYDROGEN:
-            residual = TransportRoutines::viscosity_hydrogen_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_TOLUENE:
-            residual = TransportRoutines::viscosity_toluene_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HEXANE:
-            residual = TransportRoutines::viscosity_hexane_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_HEPTANE:
-            residual = TransportRoutines::viscosity_heptane_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_ETHANE:
-            residual = TransportRoutines::viscosity_ethane_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_BENZENE:
-            residual = TransportRoutines::viscosity_benzene_higher_order_hardcoded(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_CO2_LAESECKE_JPCRD_2017:
-            residual = TransportRoutines::viscosity_CO2_higher_order_hardcoded_LaeseckeJPCRD2017(*this);
-            break;
-        case ViscosityHigherOrderVariables::VISCOSITY_HIGHER_ORDER_EXPRESSION:
-            if (!components[0].transport.viscosity_higher_order.expression_data.correlation)
-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
-            residual = components[0].transport.viscosity_higher_order.expression_data.correlation->eval(*this);
-            break;
-        default:
-            throw ValueError(
-              format("higher order viscosity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
-    }
-
-    return initial_density + residual;
+CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity_background(CoolPropDbl /*eta_dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/) {
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
-
-/// Transport properties are only defined for a single phase.  Inside the two-phase
-/// region the saturated liquid and vapor have different values and there is no
-/// meaningful bulk value, so refuse rather than evaluate a single-phase correlation
-/// at the overall density (#3446).  Q = 0 and Q = 1 are the saturated phases.  The
-/// tolerance matches the 1e-9 band in which the pure-fluid flashes already label a
-/// state two-phase, so a state on the saturation curve to within roundoff passes.
-/// Written so that a NaN quality throws.  A metastable value can still be had by
-/// imposing the phase with specify_phase().
-static void check_transport_property_defined(HelmholtzEOSMixtureBackend& HEOS, const char* property) {
-    const double Q_tol = 1e-9, Q = HEOS.Q();
-    if (HEOS.phase() == iphase_twophase && !(Q <= Q_tol || Q >= 1 - Q_tol)) {
-        throw ValueError(
-          format("%s is not defined for two-phase states (Q = %g); evaluate the saturated liquid (Q = 0) or vapor (Q = 1) instead", property, Q));
-    }
-}
-
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_viscosity() {
-    check_transport_property_defined(*this, "Viscosity");
-    if (is_pure_or_pseudopure) {
-        CoolPropDbl dilute = 0, initial_density = 0, residual = 0, critical = 0;
-        calc_viscosity_contributions(dilute, initial_density, residual, critical);
-        return dilute + initial_density + residual + critical;
-    } else {
-        set_warning_string("Mixture model for viscosity is highly approximate");
-        CoolPropDbl summer = 0;
-        for (std::size_t i = 0; i < mole_fractions.size(); ++i) {
-            shared_ptr<HelmholtzEOSBackend> HEOS = std::make_shared<HelmholtzEOSBackend>(components[i]);
-            HEOS->update(DmolarT_INPUTS, _rhomolar, _T);
-            // The mixture's (T, rho) may fall inside the pure component's dome.  Relabel
-            // the phase so the two-phase check lets the correlation be evaluated there
-            // regardless (#3446).  Relabel after the update rather than imposing it before:
-            // a re-flash with an imposed phase would replace psat in p() by the EOS pressure,
-            // which the friction-theory viscosity models read.
-            HEOS->specify_phase(iphase_gas);
-            summer += mole_fractions[i] * log(HEOS->viscosity());
-        }
-        return exp(summer);
-    }
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
-void HelmholtzEOSMixtureBackend::calc_viscosity_contributions(CoolPropDbl& dilute, CoolPropDbl& initial_density, CoolPropDbl& residual,
-                                                              CoolPropDbl& critical) {
-    check_transport_property_defined(*this, "Viscosity");
-    if (is_pure_or_pseudopure) {
-        // Reset the variables
-        dilute = 0;
-        initial_density = 0;
-        residual = 0;
-        critical = 0;
-
-        // Get a reference for code cleanness
-        CoolPropFluid& component = components[0];
-
-        if (!component.transport.viscosity_model_provided) {
-            throw ValueError(format("Viscosity model is not available for this fluid"));
-        }
-
-        // Check if using ECS
-        if (component.transport.viscosity_using_ECS) {
-            // Build the reference fluid once and cache it — viscosity_ECS resets
-            // its state on every call (conformal_state_solver + update_DmolarT_direct),
-            // so reusing the backend is safe and avoids deep-copying the entire
-            // reference-fluid EOS on every viscosity evaluation.
-            if (!viscosity_ecs_reference_state) {
-                std::string fluid_name = component.transport.viscosity_ecs.reference_fluid;
-                std::vector<std::string> names(1, fluid_name);
-                viscosity_ecs_reference_state = std::make_shared<HelmholtzEOSMixtureBackend>(names);
-            }
-            // Get the viscosity using ECS and stick in the critical value
-            critical = TransportRoutines::viscosity_ECS(*this, *viscosity_ecs_reference_state);
-            return;
-        }
-
-        // Check if using Chung model
-        if (component.transport.viscosity_using_Chung) {
-            // Get the viscosity using ECS and stick in the critical value
-            critical = TransportRoutines::viscosity_Chung(*this);
-            return;
-        }
-
-        // Check if using rho*sr model
-        if (component.transport.viscosity_using_rhosr) {
-            // Get the viscosity using rho*sr model and stick in the critical value
-            critical = TransportRoutines::viscosity_rhosr(*this);
-            return;
-        }
-
-        if (component.transport.hardcoded_viscosity != CoolProp::TransportPropertyData::VISCOSITY_NOT_HARDCODED) {
-            // Evaluate hardcoded model and stick in the critical value
-            switch (component.transport.hardcoded_viscosity) {
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_WATER:
-                    critical = TransportRoutines::viscosity_water_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HEAVYWATER:
-                    critical = TransportRoutines::viscosity_heavywater_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HEAVYWATER_IAPWS2020:
-                    critical = TransportRoutines::viscosity_heavywater_IAPWS2020_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_HELIUM:
-                    critical = TransportRoutines::viscosity_helium_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_R23:
-                    critical = TransportRoutines::viscosity_R23_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_METHANOL:
-                    critical = TransportRoutines::viscosity_methanol_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_M_XYLENE:
-                    critical = TransportRoutines::viscosity_m_xylene_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_O_XYLENE:
-                    critical = TransportRoutines::viscosity_o_xylene_hardcoded(*this);
-                    break;
-                case CoolProp::TransportPropertyData::VISCOSITY_HARDCODED_P_XYLENE:
-                    critical = TransportRoutines::viscosity_p_xylene_hardcoded(*this);
-                    break;
-                default:
-                    throw ValueError(
-                      format("hardcoded viscosity type [%d] is invalid for fluid %s", component.transport.hardcoded_viscosity, name().c_str()));
-            }
-            return;
-        }
-
-        // -------------------------
-        //     Normal evaluation
-        // -------------------------
-
-        // Dilute part
-        dilute = calc_viscosity_dilute();
-
-        // Background viscosity given by the sum of the initial density dependence and higher order terms
-        calc_viscosity_background(dilute, initial_density, residual);
-
-        // Critical part (no fluids have critical enhancement for viscosity currently)
-        critical = 0;
-    } else {
-        throw ValueError("calc_viscosity_contributions invalid for mixtures");
-    }
+void HelmholtzEOSMixtureBackend::calc_viscosity_contributions(CoolPropDbl& /*dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/,
+                                                              CoolPropDbl& /*critical*/) {
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
-void HelmholtzEOSMixtureBackend::calc_conductivity_contributions(CoolPropDbl& dilute, CoolPropDbl& initial_density, CoolPropDbl& residual,
-                                                                 CoolPropDbl& critical) {
-    check_transport_property_defined(*this, "Thermal conductivity");
-    if (is_pure_or_pseudopure) {
-        // Reset the variables
-        dilute = 0;
-        initial_density = 0;
-        residual = 0;
-        critical = 0;
-
-        // Get a reference for code cleanness
-        CoolPropFluid& component = components[0];
-
-        if (!component.transport.conductivity_model_provided) {
-            throw ValueError(format("Thermal conductivity model is not available for this fluid"));
-        }
-
-        // Check if using ECS
-        if (component.transport.conductivity_using_ECS) {
-            // Build the reference fluid once and cache it — conductivity_ECS resets
-            // its state on every call, so reusing the backend is safe and avoids
-            // deep-copying the entire reference-fluid EOS on every conductivity
-            // evaluation (the dominant cost of SVDSBTL surface builds for ECS fluids).
-            if (!conductivity_ecs_reference_state) {
-                std::string fluid_name = component.transport.conductivity_ecs.reference_fluid;
-                std::vector<std::string> name(1, fluid_name);
-                conductivity_ecs_reference_state = std::make_shared<HelmholtzEOSMixtureBackend>(name);
-            }
-            // Get the conductivity using ECS and store in initial_density (not normally used);
-            initial_density = TransportRoutines::conductivity_ECS(*this, *conductivity_ecs_reference_state);  // Warning: not actually initial_density
-            return;
-        }
-
-        if (component.transport.hardcoded_conductivity != CoolProp::TransportPropertyData::CONDUCTIVITY_NOT_HARDCODED) {
-            // Evaluate hardcoded model and deposit in initial_density variable
-            // Warning: not actually initial_density
-            switch (component.transport.hardcoded_conductivity) {
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_WATER:
-                    initial_density = TransportRoutines::conductivity_hardcoded_water(*this);
-                    break;
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HEAVYWATER:
-                    initial_density = TransportRoutines::conductivity_hardcoded_heavywater(*this);
-                    break;
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HEAVYWATER_IAPWS2021:
-                    initial_density = TransportRoutines::conductivity_hardcoded_heavywater_IAPWS2021(*this);
-                    break;
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_R23:
-                    initial_density = TransportRoutines::conductivity_hardcoded_R23(*this);
-                    break;
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_HELIUM:
-                    initial_density = TransportRoutines::conductivity_hardcoded_helium(*this);
-                    break;
-                case CoolProp::TransportPropertyData::CONDUCTIVITY_HARDCODED_METHANE:
-                    initial_density = TransportRoutines::conductivity_hardcoded_methane(*this);
-                    break;
-                default:
-                    throw ValueError(format("hardcoded conductivity type [%d] is invalid for fluid %s",
-                                            components[0].transport.hardcoded_conductivity, name().c_str()));
-            }
-            return;
-        }
-
-        // -------------------------
-        //     Normal evaluation
-        // -------------------------
-
-        // Dilute part
-        switch (component.transport.conductivity_dilute.type) {
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_RATIO_POLYNOMIALS:
-                dilute = TransportRoutines::conductivity_dilute_ratio_polynomials(*this);
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_ETA0_AND_POLY:
-                dilute = TransportRoutines::conductivity_dilute_eta0_and_poly(*this);
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_CO2:
-                dilute = TransportRoutines::conductivity_dilute_hardcoded_CO2(*this);
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_CO2_HUBER_JPCRD_2016:
-                dilute = TransportRoutines::conductivity_dilute_hardcoded_CO2_HuberJPCRD2016(*this);
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_ETHANE:
-                dilute = TransportRoutines::conductivity_dilute_hardcoded_ethane(*this);
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_NONE:
-                dilute = 0.0;
-                break;
-            case ConductivityDiluteVariables::CONDUCTIVITY_DILUTE_EXPRESSION:
-                if (!components[0].transport.conductivity_dilute.expression_data.correlation)
-                    throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
-                dilute = components[0].transport.conductivity_dilute.expression_data.correlation->eval(*this);
-                break;
-            default:
-                throw ValueError(
-                  format("dilute conductivity type [%d] is invalid for fluid %s", components[0].transport.conductivity_dilute.type, name().c_str()));
-        }
-
-        // Residual part
-        residual = calc_conductivity_background();
-
-        // Critical part
-        switch (component.transport.conductivity_critical.type) {
-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_SIMPLIFIED_OLCHOWY_SENGERS:
-                critical = TransportRoutines::conductivity_critical_simplified_Olchowy_Sengers(*this);
-                break;
-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_R123:
-                critical = TransportRoutines::conductivity_critical_hardcoded_R123(*this);
-                break;
-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_AMMONIA:
-                critical = TransportRoutines::conductivity_critical_hardcoded_ammonia(*this);
-                break;
-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_NONE:
-                critical = 0.0;
-                break;
-            case ConductivityCriticalVariables::CONDUCTIVITY_CRITICAL_CARBONDIOXIDE_SCALABRIN_JPCRD_2006:
-                critical = TransportRoutines::conductivity_critical_hardcoded_CO2_ScalabrinJPCRD2006(*this);
-                break;
-            default:
-                throw ValueError(
-                  format("critical conductivity type [%d] is invalid for fluid %s", components[0].transport.viscosity_dilute.type, name().c_str()));
-        }
-    } else {
-        throw ValueError("calc_conductivity_contributions invalid for mixtures");
-    }
-};
-
+void HelmholtzEOSMixtureBackend::calc_conductivity_contributions(CoolPropDbl& /*dilute*/, CoolPropDbl& /*initial_density*/, CoolPropDbl& /*residual*/,
+                                                                 CoolPropDbl& /*critical*/) {
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
+}
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_conductivity_background() {
-    // Residual part
-    CoolPropDbl lambda_residual = _HUGE;
-    switch (components[0].transport.conductivity_residual.type) {
-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_POLYNOMIAL:
-            lambda_residual = TransportRoutines::conductivity_residual_polynomial(*this);
-            break;
-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_POLYNOMIAL_AND_EXPONENTIAL:
-            lambda_residual = TransportRoutines::conductivity_residual_polynomial_and_exponential(*this);
-            break;
-        case ConductivityResidualVariables::CONDUCTIVITY_RESIDUAL_EXPRESSION:
-            if (!components[0].transport.conductivity_residual.expression_data.correlation)
-                throw ValueError(format("expression correlation not set for fluid %s", name().c_str()));
-            lambda_residual = components[0].transport.conductivity_residual.expression_data.correlation->eval(*this);
-            break;
-        default:
-            throw ValueError(
-              format("residual conductivity type [%d] is invalid for fluid %s", components[0].transport.conductivity_residual.type, name().c_str()));
-    }
-    return lambda_residual;
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_conductivity() {
-    check_transport_property_defined(*this, "Thermal conductivity");
-    if (is_pure_or_pseudopure) {
-        CoolPropDbl dilute = 0, initial_density = 0, residual = 0, critical = 0;
-        calc_conductivity_contributions(dilute, initial_density, residual, critical);
-        return dilute + initial_density + residual + critical;
-    } else {
-        set_warning_string("Mixture model for conductivity is highly approximate");
-        CoolPropDbl summer = 0;
-        for (std::size_t i = 0; i < mole_fractions.size(); ++i) {
-            shared_ptr<HelmholtzEOSBackend> HEOS = std::make_shared<HelmholtzEOSBackend>(components[i]);
-            HEOS->update(DmolarT_INPUTS, _rhomolar, _T);
-            // The mixture's (T, rho) may fall inside the pure component's dome.  Relabel
-            // the phase so the two-phase check lets the correlation be evaluated there
-            // regardless (#3446).  Relabel after the update rather than imposing it before:
-            // a re-flash with an imposed phase would replace psat in p() by the EOS pressure,
-            // which the friction-theory viscosity models read.
-            HEOS->specify_phase(iphase_gas);
-            summer += mole_fractions[i] * HEOS->conductivity();
-        }
-        return summer;
-    }
+    throw NotImplementedError("transport disabled in N2O-only embedded build");
 }
-void HelmholtzEOSMixtureBackend::calc_conformal_state(const std::string& reference_fluid, CoolPropDbl& T, CoolPropDbl& rhomolar) {
-    // Construct as the derived HelmholtzEOSBackend, then implicit upcast
-    // to the shared_ptr<HelmholtzEOSMixtureBackend> base. Single allocation;
-    // virtual destructor on the base ensures correct cleanup.
-    shared_ptr<CoolProp::HelmholtzEOSMixtureBackend> REF = std::make_shared<CoolProp::HelmholtzEOSBackend>(reference_fluid);
-
-    if (T < 0 && rhomolar < 0) {
-        // Collect some parameters
-        CoolPropDbl Tc = T_critical(), Tc0 = REF->T_critical(), rhocmolar = rhomolar_critical(), rhocmolar0 = REF->rhomolar_critical();
-
-        // Starting guess values for shape factors
-        CoolPropDbl theta = 1;
-        CoolPropDbl phi = 1;
-
-        // The equivalent substance reducing ratios
-        CoolPropDbl f = Tc / Tc0 * theta;
-        CoolPropDbl h = rhocmolar0 / rhocmolar * phi;  // Must be the ratio of MOLAR densities!!
-
-        // Starting guesses for conformal state
-        T = this->T() / f;
-        rhomolar = this->rhomolar() * h;
-    }
-
-    TransportRoutines::conformal_state_solver(*this, *REF, T, rhomolar);
+void HelmholtzEOSMixtureBackend::calc_conformal_state(const std::string& /*reference_fluid*/, CoolPropDbl& /*T*/, CoolPropDbl& /*rhomolar*/) {
+    throw NotImplementedError("conformal state / ECS transport disabled in N2O-only embedded build");
 }
 CoolPropDbl HelmholtzEOSMixtureBackend::calc_Ttriple() {
     double summer = 0;
@@ -1239,22 +769,8 @@ CoolPropDbl HelmholtzEOSMixtureBackend::calc_saturated_vapor_keyed_output(parame
     return SatV->keyed_output(key);
 }
 
-void HelmholtzEOSMixtureBackend::calc_ideal_curve(const std::string& type, std::vector<double>& T, std::vector<double>& p) {
-    if (type == "Joule-Thomson") {
-        JouleThomsonCurveTracer JTCT(this, 1e5, 800);
-        JTCT.trace(T, p);
-    } else if (type == "Joule-Inversion") {
-        JouleInversionCurveTracer JICT(this, 1e5, 800);
-        JICT.trace(T, p);
-    } else if (type == "Ideal") {
-        IdealCurveTracer ICT(this, 1e5, 800);
-        ICT.trace(T, p);
-    } else if (type == "Boyle") {
-        BoyleCurveTracer BCT(this, 1e5, 800);
-        BCT.trace(T, p);
-    } else {
-        throw ValueError(format("Invalid ideal curve type: %s", type.c_str()));
-    }
+void HelmholtzEOSMixtureBackend::calc_ideal_curve(const std::string& /*type*/, std::vector<double>& /*T*/, std::vector<double>& /*p*/) {
+    throw NotImplementedError("ideal curves disabled in N2O-only embedded build");
 };
 std::vector<std::string> HelmholtzEOSMixtureBackend::calc_fluid_names() {
     std::vector<std::string> out;
@@ -3005,7 +2521,7 @@ struct ChebDensityEntry
     double Tmin = 0;  ///< the tables cover T >= Tmin
 };
 namespace {
-std::mutex cheb_cache_mtx;
+// std::mutex cheb_cache_mtx;
 std::map<std::string, std::shared_ptr<const ChebDensityEntry>> cheb_cache;  // by model key, see cheb_model_key
 
 // Key of the model the tables are built from: backend, components, gas-constant configuration, and a fingerprint of
@@ -3055,14 +2571,22 @@ std::string cheb_model_key(HelmholtzEOSMixtureBackend& HEOS) {
 }  // namespace
 
 CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb(CoolPropDbl T, CoolPropDbl p) {
-    if (!get_config_bool(CHEBYSHEV_DENSITY_SOLVER)) return -1;
-    try {
-        return solver_rho_Tp_cheb_impl(T, p);
-    } catch (...) {
-        return -1;  // never fail the flash from here: the existing solvers answer instead
-    }
+    // N2O-only embedded: Chebyshev density solver disabled (uses thread_local / TLS).
+    (void)T;
+    (void)p;
+    return -1;
+    // if (!get_config_bool(CHEBYSHEV_DENSITY_SOLVER)) return -1;
+    // try {
+    //     return solver_rho_Tp_cheb_impl(T, p);
+    // } catch (...) {
+    //     return -1;
+    // }
 }
-CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, CoolPropDbl p) {
+CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl /*T*/, CoolPropDbl /*p*/) {
+    return -1;
+}
+#if 0
+CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl_DISABLED(CoolPropDbl T, CoolPropDbl p) {
     // the gas-constant configuration is part of the model the tables were built for
     const bool R_norm = get_config_bool(NORMALIZE_GAS_CONSTANTS);
     const double R_u = get_config_double(R_U_CODATA);
@@ -3080,7 +2604,7 @@ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, C
         if (supported && mole_fractions.size() == components.size()) {
             try {
                 const std::string key = cheb_model_key(*this);
-                std::scoped_lock lk(cheb_cache_mtx);
+                // std::scoped_lock lk(cheb_cache_mtx);
                 const auto it = cheb_cache.find(key);
                 if (it != cheb_cache.end()) {
                     cheb_density = it->second;
@@ -3137,6 +2661,7 @@ CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_cheb_impl(CoolPropDbl T, C
     if (!cheb_density->tab->assemble(T, x, S)) return -1;
     return cheb_density->tab->stable_root(S, p);
 }
+#endif
 
 CoolPropDbl HelmholtzEOSMixtureBackend::solver_rho_Tp_global(CoolPropDbl T, CoolPropDbl p, CoolPropDbl rhomolar_max) {
     {  // the Chebyshev all-roots solver, when enabled and able to answer
